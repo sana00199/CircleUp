@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:background="@drawable/dialog_bg"
+    android:padding="20dp">
+
+<TextView
+android:layout_width="wrap_content"
+android:layout_height="wrap_content"
+android:layout_gravity="center"
+android:fontFamily="@font/aclonica"
+    android:textColor="#050505"
+    android:textStyle="italic"
+    android:padding="10dp"
+    android:text="Enter Room ID:"
+    android:textSize="20sp"
+    android:layout_marginBottom="10dp"/>
+
+
+<EditText
+android:id="@+id/editRoomIdToJoin"
+android:layout_width="match_parent"
+android:layout_height="wrap_content"
+android:hint="Paste or Type Room ID"
+android:background="@drawable/rounded_edittext"
+    android:padding="12dp"
+    android:textColor="#000"
+    android:textColorHint="#888"
+    android:inputType="textCapCharacters"  />
+
+
+
+
+    <Button
+        android:id="@+id/btnJoinRoomInDialog"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:layout_gravity="center"
+    android:layout_marginTop="20dp"
+    android:text="Join Room"
+    android:textColor="#fff"
+    android:backgroundTint="#5E3380"
+    android:textSize="18sp"
+    android:paddingStart="30dp"
+    android:paddingEnd="30dp"/>
+
+
+    </LinearLayout>

@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Use a LinearLayout as the root to hold both the Toolbar and the ScrollView -->
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="#EFE4F7"
+    tools:context=".Feedback">
+
+    <!-- Toolbar element -->
+    <!-- Agar aap chahte hain feedback activity ka apna toolbar ho back button ke saath -->
+<androidx.appcompat.widget.Toolbar
+android:id="@+id/toolbar_feedback"
+android:layout_width="match_parent"
+android:layout_height="?attr/actionBarSize"
+    android:background="#7A3F99"
+    app:title="Send Feedback"
+    app:titleTextColor="@android:color/white"
+    android:elevation="4dp"
+    android:theme="@style/ThemeOverlay.AppCompat.ActionBar" />
+
+
+    <!-- ScrollView containing the rest of the content -->
+    <!-- This ScrollView will now take up the remaining space below the Toolbar -->
+<ScrollView
+android:layout_width="match_parent"
+android:layout_height="0dp"
+    android:layout_weight="1"
+    android:padding="@dimen/_12sdp"
+    android:fillViewport="true">
+
+    <!-- Your original LinearLayout content goes inside the ScrollView -->
+<LinearLayout
+android:layout_width="match_parent"
+android:layout_height="wrap_content"
+android:orientation="vertical"
+android:padding="@dimen/_16sdp"
+    android:gravity="center_horizontal">
+
+<TextView
+android:layout_width="match_parent"
+android:layout_height="wrap_content"
+android:text="Provide Your Feedback"
+android:textSize="24sp"
+android:textStyle="bold"
+    android:textColor="@color/black"
+android:gravity="center"
+android:layout_marginBottom="@dimen/_16sdp"/>
+
+    <!-- Optional: Rating Bar -->
+<TextView
+android:layout_width="match_parent"
+android:layout_height="wrap_content"
+android:text="Rate your experience:"
+    android:textColor="@color/black"
+android:textSize="18sp"
+android:layout_marginBottom="@dimen/_8sdp"/>
+
+<RatingBar
+android:id="@+id/ratingBar"
+android:layout_width="wrap_content"
+android:layout_height="wrap_content"
+    android:outlineAmbientShadowColor="@color/black"
+    android:outlineSpotShadowColor="@color/gray"
+android:numStars="5"
+android:stepSize="0.5"
+android:layout_marginBottom="@dimen/_10sdp"/>
+
+<TextView
+android:layout_width="wrap_content"
+android:layout_height="wrap_content"
+android:paddingTop="@dimen/_14sdp"
+android:text="Enter Your FeedBack here:"
+android:textColor="@color/black"
+android:textStyle="bold"
+android:textSize="@dimen/_12sdp"
+    />
+
+<TextView
+android:layout_width="wrap_content"
+android:layout_height="wrap_content"
+android:paddingTop="@dimen/_9sdp"
+android:text="Any Problem, bugs, Crashes, Any new features in your mind, Your Experience of App."
+android:textColor="@color/black"
+android:textStyle="italic"
+android:textSize="@dimen/_12sdp"
+android:layout_marginBottom="@dimen/_8sdp"
+    />
+
+    <!-- Feedback Text Input -->
+<EditText
+android:id="@+id/editTextFeedback"
+android:layout_width="match_parent"
+android:layout_height="wrap_content"
+android:minHeight="@dimen/_150sdp"
+android:gravity="top|start"
+android:hint="Enter your feedback here..."
+    android:textColor="@color/black"
+    android:textColorHint="@color/gray"
+android:inputType="textMultiLine"
+android:padding="@dimen/_12sdp"
+android:background="@android:drawable/editbox_background"
+android:layout_marginBottom="@dimen/_24sdp"/>
+
+    <!-- Send Button -->
+<Button
+android:id="@+id/buttonSendFeedback"
+android:layout_width="wrap_content"
+android:layout_height="wrap_content"
+android:text="Send Feedback"
+    android:textColor="@color/white"
+    android:backgroundTint="#7A3F99"
+android:textSize="18sp"
+android:padding="@dimen/_12sdp"/>
+
+    </LinearLayout>
+    </ScrollView>
+    </LinearLayout>

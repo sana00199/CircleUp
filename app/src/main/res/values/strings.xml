@@ -1,0 +1,125 @@
+<resources>
+    <string name="app_name">CircleUp</string>
+    <string name="OpenDrawer">Open Navigation Drawer</string>
+    <string name="CloseDrawer">Close Navigation Drawer</string>
+    <!-- TODO: Remove or change this placeholder text -->
+    <string name="hello_blank_fragment">Hello blank fragment</string>
+
+
+    <string name="underlined_signup"><u> Sign Up</u></string>
+
+    <!-- NEW strings for Privacy and Security screen -->
+    <string name="privacy_security_description">Manage your security settings, including encryption keys and password changes.</string>
+    <string name="change_password_title">Change Passphrase key</string>
+    <!-- <string name="two_step_verification_title">Two-step verification</string> --> <!-- If adding -->
+
+
+    <string name="default_web_client_id">YOUR_CLIENT_ID.apps.googleusercontent.com</string>
+    <string name="string_underlined_signup"><u> Sign Up  </u></string>
+    <string name="you_already_have_an_acccount_login">You already have an acccount? <b><i><u>Login </u></i></b></string>
+    <string name="email_example_com"><u>email@example.com </u></string>
+    <string name="failed_to_sync_temporary_rooms">"Failed to sync temporary rooms: "</string>
+    <string name="unlock_account_title">Enter Passphrase Key to Unlock Messages</string>
+    <string name="privacy_security_title">Passphrase</string>
+    <string name="settings_profile_title">SetUp your Profile</string>
+    <string name="change_auth_password_title">Change Account Password</string>
+
+
+    <string name="privacy_policy_text">
+        <![CDATA[
+        <h1>Privacy Policy for CircleUp</h1>
+        <p>Last Updated: May 30, 2025</p>
+
+        <p>Welcome to CircleUp! This policy explains how we collect, use, and protect your information.</p>
+
+        <h2>1. Information We Collect</h2>
+        <ul>
+            <li><strong>Account Information:</strong> Email, username, profile picture, status.</li>
+            <li><strong>Messages:</strong> Sent and received messages (stored encrypted).</li>
+            <li><strong>Usage Data:</strong> How you use the app (for analytics).</li>
+        </ul>
+
+        <h2>2. How We Use Information</h2>
+        <p>We use your information to provide, maintain, and improve the CircleUp service, including:</p>
+        <ul>
+            <li>Enabling communication (one-to-one and groups).</li>
+            <li>Providing scheduled and temporary messages.</li>
+            <li>Ensuring security and preventing fraud.</li>
+            <li>Syncing data across your devices.</li>
+        </ul>
+
+        <h2>3. End-to-End Encryption</h2>
+        <p><strong>One-to-One Chats:</strong> These are protected by end-to-end encryption. This means only you and the recipient can read your messages. We (CircleUp) cannot read them. Your private encryption key is stored securely on your device and protected by your Security Passphrase. We do NOT store your private key or Passphrase.</p>
+        <p><strong>Groups and Temporary Rooms:</strong> While messages are stored securely, full end-to-end encryption involving dynamic key management for all group/temporary room scenarios is an ongoing development.</p>
+
+        <h2>4. Data Storage</h2>
+        <p>Your data is stored securely using Firebase Realtime Database and locally on your device using Room Database for offline access. Encryption keys are stored securely on your device using AndroidX Security components.</p>
+
+        <h2>5. Data Deletion</h2>
+        <p>You can delete your account at any time. Deleting your account will remove your data from our servers and your device. Note that deleting your security passphrase will result in permanent loss of your encrypted message history.</p>
+
+        <h2>6. Third-Party Services</h2>
+        <p>We use Firebase for backend services (authentication, database, cloud messaging) and OneSignal for push notifications. Please review their privacy policies.</p>
+
+        <h2>7. Your Rights</h2>
+        <p>You have rights regarding your personal data, including access, correction, and deletion. Contact us to exercise these rights.</p>
+
+        <p>By using CircleUp, you agree to this Privacy Policy.</p>
+
+        ]]>
+    </string>
+
+
+    <string name="about_circleup_content">
+        <![CDATA[
+        <h2>About CircleUp</h2>
+        <p>Welcome to CircleUp, your next-generation secure messaging app designed for seamless communication.</p>
+
+        <h3>Key Features:</h3>
+        <ul>
+            <li><strong>Private One-to-One Chats:</strong> Secure messaging for direct conversations.</li>
+            <li><strong>Group Chats:</strong> Communicate with multiple people (Note: While chats are stored securely, End-to-End Encryption for dynamic groups is complex and currently focused on one-to-one).</li>
+            <li><strong>Scheduled Messages:</strong> Plan and send messages at a later time.</li>
+            <li><strong>Temporary Chat Rooms:</strong> Create temporary spaces for quick discussions with disappearing messages after expiry.</li>
+            <li><strong>Offline Access:</strong> Access and view chat history even without an internet connection using local storage (Room Database).</li>
+            <li><strong>Friend/Contact System:</strong> Easily find, add, and manage your contacts.</li>
+
+            <li><strong>User Profile & Account Management:</strong> Customize your profile and manage account settings.</li>
+        </ul>
+
+        <h3>Security & Encryption:</h3>
+        <p>CircleUp prioritizes your privacy:</p>
+        <ul>
+            <li><strong>End-to-End Encryption (E2EE):</strong> Implemented for <strong>private one-to-one chats</strong>. Messages are encrypted on your device and can only be decrypted by the intended recipient\'s device. Neither CircleUp nor any third party can read your encrypted messages.</li>
+            <li><strong>How E2EE Works (Simplified):</strong> Each encrypted one-to-one chat uses a unique conversation key (AES). This key is securely exchanged with your chat partner using your unique RSA Public Keys. Your sensitive Private RSA Key is stored securely on your device and protected by your Security Passphrase.</li>
+            <li><strong>Security Passphrase:</strong> This is crucial for unlocking your Private RSA Key on your device. It is NOT your account password and should be kept confidential.</li>
+            <li><strong>No Ads or Promotions:</strong> Your conversations are yours. We do not clutter your experience with advertisements or promotions.</li>
+        </ul>
+
+        <h3>Using Contacts & Messaging:</h3>
+        <p>To start chatting securely:</p>
+        <ol>
+            <li>Go to the "Find Friends" tab to search for users.</li>
+            <li>Send a friend request to the desired user.</li>
+            <li>Once they accept your request, they will appear in your "My Contacts" tab.</li>
+            <li>Click on their name in "My Contacts" to open a chat window and start sending messages.</li>
+        </ol>
+
+        <h3>Passphrase Reset:</h3>
+        <p>If you forget your Security Passphrase:</p>
+        <ul>
+            <li>You can go to "Privacy and Security" and select "Reset Secure Passphrase".</li>
+            <li><strong>WARNING: Resetting your passphrase will permanently delete your old encryption keys. You will lose access to ALL past encrypted messages in one-to-one chats. These messages will be unreadable both for you AND your chat partners in those old conversations.</strong></li>
+            <li>After resetting, a new RSA key pair will be generated, and you will set a new passphrase. You can then start new encrypted conversations.</li>
+            <li>This feature is necessary because without the correct passphrase, accessing your Private Key (needed to decrypt old messages) is impossible by design to ensure security.</li>
+        </ul>
+
+        <h3>Data Protection:</h3>
+        <p>User data is stored securely in Firebase Realtime Database. Firebase Authentication handles user login and security. Firebase Security Rules are configured to control access to your data.</p>
+
+        <p>Thank you for choosing CircleUp!</p>
+        ]]>
+    </string>
+
+
+</resources>

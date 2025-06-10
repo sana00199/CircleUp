@@ -1,0 +1,143 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="@dimen/_3sdp">
+
+    <!-- Receiver's Message Layout -->
+    <LinearLayout
+        android:id="@+id/receiver_layout"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="start"
+        android:gravity="start"
+        android:orientation="vertical">
+
+
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+            <de.hdodenhof.circleimageview.CircleImageView
+                android:id="@+id/receiver_profile_image"
+                android:layout_width="@dimen/_35sdp"
+                android:layout_marginTop="5dp"
+                android:layout_height="@dimen/_35sdp"
+                android:layout_marginEnd="@dimen/_7sdp"
+                android:src="@drawable/default_profile_img" />
+
+
+            <LinearLayout
+                android:layout_width="230dp"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                >
+
+                <TextView
+                    android:id="@+id/receiver_name"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Receiver Name"
+                    android:textStyle="bold|italic"
+                    android:textSize="@dimen/_11sdp"
+                    android:textColor="#C53DDC"
+                    android:paddingStart="5dp" />
+
+            <TextView
+                android:id="@+id/receiver_message_text"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="@drawable/reciver_shape"
+                android:padding="8dp"
+                android:text="Receiver message"
+                android:textSize="15sp"
+                android:textColor="#000" />
+
+                <ImageView
+                    android:id="@+id/receiver_image_view"
+                    android:layout_width="200dp"
+                    android:layout_height="200dp"
+                    android:layout_marginTop="4dp"
+                    android:scaleType="centerCrop"
+                    android:visibility="gone" />
+
+                <TextView
+                    android:id="@+id/receiver_drawing_link_text"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                    android:background="@drawable/background_drawing_receiver"
+                android:padding="8dp"
+                android:text="[Drawing Session Link]"
+                android:textSize="15sp"
+                android:textColor="@color/black"
+                android:visibility="gone" />
+
+                <TextView
+                    android:id="@+id/receiver_time"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="12:30 PM"
+                    android:textSize="@dimen/_7sdp"
+                    android:textColor="@color/gray"
+                    android:layout_marginTop="2dp"
+                    android:paddingStart="5dp" />
+
+            </LinearLayout>
+        </LinearLayout>
+
+
+    </LinearLayout>
+
+    <!-- Sender's Message Layout -->
+    <LinearLayout
+        android:id="@+id/sender_layout"
+        android:layout_width="230dp"
+        android:layout_height="wrap_content"
+        android:layout_gravity="end"
+        android:gravity="end"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/sender_message_text"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="@drawable/sender_shape"
+            android:padding="8dp"
+            android:text="hi i am sender"
+            android:textSize="17sp"
+            android:textColor="#141212" />
+
+        <ImageView
+            android:id="@+id/sender_image_view"
+            android:layout_width="200dp"
+            android:layout_height="200dp"
+            android:layout_marginTop="4dp"
+            android:scaleType="centerCrop"
+            android:visibility="gone" />
+
+        <TextView
+            android:id="@+id/sender_drawing_link_text"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+            android:background="@drawable/background_drawing_sender"
+        android:padding="8dp"
+        android:text="[Drawing Session Link]"
+        android:textSize="17sp"
+        android:textColor="#141212"
+        android:visibility="gone" />
+
+
+        <TextView
+            android:id="@+id/sender_time"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="12:30 PM"
+            android:textSize="@dimen/_7sdp"
+            android:textColor="@color/gray"
+            android:layout_marginTop="2dp"
+            android:gravity="end" />
+    </LinearLayout>
+
+</LinearLayout>

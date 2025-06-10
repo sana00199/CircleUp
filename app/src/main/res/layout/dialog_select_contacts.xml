@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:background="#EFE4F7"
+    android:padding="16dp"> <!-- Dialog padding -->
+
+    <TextView
+       android:layout_width="wrap_content"
+       android:layout_height="wrap_content"
+       android:text="Select Contacts"
+        android:fontFamily="@font/aclonica"
+       android:textSize="18sp"
+       android:textStyle="bold"
+       android:layout_gravity="center_horizontal"
+       android:layout_marginBottom="16dp"/>
+
+    <!-- Search View -->
+    <androidx.appcompat.widget.SearchView
+        android:id="@+id/dialog_search_view"
+        android:layout_width="match_parent"
+        android:layout_height="45dp"
+        android:background="@android:drawable/editbox_background"
+        android:iconifiedByDefault="false"
+        android:queryHint="Search contacts"
+        android:text="Select Users"
+        android:textSize="16sp"
+
+        android:textAppearance="@color/black"
+        android:outlineAmbientShadowColor="@color/black"
+        android:layout_marginBottom="8dp"/>
+
+
+    <TextView
+        android:id="@+id/tv_empty"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:text="No contacts found."
+        android:textColor="#888888"
+        android:textSize="16sp"
+        android:layout_marginTop="16dp"
+        android:layout_marginBottom="16dp"
+        android:visibility="gone" />
+
+
+    <!-- Contacts RecyclerView -->
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/recycler_contacts"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+    android:scrollbars="vertical" />
+
+</LinearLayout>

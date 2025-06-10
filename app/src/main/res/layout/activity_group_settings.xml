@@ -1,0 +1,136 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/main"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#EFE4F7"
+    android:padding="@dimen/_26sdp"
+    android:orientation="vertical"
+    tools:context=".GroupSettingsActivity">
+
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:orientation="horizontal"
+        >
+        <!-- Group Profile Image -->
+        <de.hdodenhof.circleimageview.CircleImageView
+            android:id="@+id/group_profile_image"
+            android:layout_width="@dimen/_100sdp"
+            android:layout_height="@dimen/_100sdp"
+            android:src="@drawable/photocameradefault"
+            app:civ_border_color="#FF000000"
+            app:civ_border_width="@dimen/_1sdp"
+            android:layout_gravity="center_horizontal" />
+
+        <!-- Delete Group Profile Image -->
+        <ImageView
+            android:id="@+id/delete_group_profile_image"
+            android:layout_width="@dimen/_30sdp"
+            android:layout_height="@dimen/_30sdp"
+            android:layout_gravity="center|bottom"
+            android:contentDescription="Delete Profile Image"
+            android:src="@drawable/delete_img" />
+    </LinearLayout>
+
+    <!-- Edit Group Name -->
+    <LinearLayout
+        android:id="@+id/linearLayout4"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="@dimen/_6sdp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Edit Group Name"
+            android:textColor="@color/black"
+            android:textSize="16sp"
+            android:textStyle="bold|italic" />
+
+        <EditText
+            android:id="@+id/groupname_edittext"
+            android:layout_width="match_parent"
+            android:layout_height="42dp"
+            android:hint="Enter Group Name"
+            android:textColorHint="#736B6B"
+            android:padding="10dp"
+            android:textColor="#0D0101" />
+    </LinearLayout>
+
+    <!-- Edit Group Members -->
+    <TextView
+        android:id="@+id/edit_group_members_title"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Edit Group Members"
+        android:textColor="@color/black"
+        android:textSize="@dimen/_12sdp"
+        android:textStyle="bold" />
+
+    <!-- CardView containing RecyclerView -->
+    <androidx.cardview.widget.CardView
+        android:id="@+id/group_members_card"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        app:cardCornerRadius="@dimen/_15sdp"
+        android:backgroundTint="#F3EEF4"
+        app:cardElevation="@dimen/_8sdp"
+        android:layout_marginTop="10dp">
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/group_members_recycler"
+            android:layout_width="match_parent"
+            android:layout_height="@dimen/_220sdp"
+            android:padding="8dp" />
+    </androidx.cardview.widget.CardView>
+
+   <LinearLayout
+       android:layout_width="wrap_content"
+       android:layout_height="wrap_content"
+       android:layout_gravity="center"
+       android:orientation="horizontal"
+       android:layout_marginTop="@dimen/_10sdp"
+       >
+       <TextView
+           android:layout_width="wrap_content"
+           android:layout_height="wrap_content"
+           android:text="Add Members  "
+           android:textColor="@color/black"
+           android:textSize="16sp"
+           android:textStyle="bold|italic" />
+
+       <!-- Add Members Button -->
+       <ImageView
+           android:id="@+id/add_members"
+           android:layout_width="@dimen/_35sdp"
+           android:layout_height="@dimen/_25sdp"
+           android:src="@drawable/add_icon"
+           android:text="Add Members"
+           android:layout_gravity="center_horizontal" />
+   </LinearLayout>
+
+    <!-- Save Group Name Button -->
+    <Button
+        android:id="@+id/save_group_name_button"
+        android:layout_width="@dimen/_200sdp"
+        android:layout_height="@dimen/_40sdp"
+        android:layout_marginBottom="20dp"
+        android:backgroundTint="#7A3F99"
+        android:fontFamily="@font/aclonica"
+        android:layout_marginTop="@dimen/_10sdp"
+        android:padding="1dp"
+        android:soundEffectsEnabled="true"
+        android:textColor="#fff"
+        android:text="Save"
+        android:textSize="24sp"
+        app:cornerRadius="@dimen/_12sdp"
+        android:layout_gravity="center_horizontal" />
+
+</LinearLayout>
+

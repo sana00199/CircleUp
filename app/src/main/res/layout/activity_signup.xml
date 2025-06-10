@@ -1,0 +1,550 @@
+<!--<?xml version="1.0" encoding="utf-8"?>-->
+<!--<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"-->
+<!--    xmlns:app="http://schemas.android.com/apk/res-auto"-->
+<!--    xmlns:tools="http://schemas.android.com/tools"-->
+<!--    android:id="@+id/main"-->
+<!--    android:layout_width="match_parent"-->
+<!--    android:layout_height="match_parent"-->
+<!--    tools:context=".Signup">-->
+
+
+<!--    <ImageView-->
+<!--        android:id="@+id/imageView3"-->
+<!--        android:layout_width="match_parent"-->
+<!--        android:layout_height="@dimen/_190sdp"-->
+<!--        android:layout_marginBottom="@dimen/_440sdp"-->
+<!--        android:contentDescription="upper_bg"-->
+<!--        android:src="@drawable/new_signup_topbg"-->
+<!--        app:layout_constraintBottom_toBottomOf="parent"-->
+<!--        tools:layout_editor_absoluteX="0dp" />-->
+
+<!--    <ImageView-->
+<!--        android:layout_width="@dimen/_210sdp"-->
+<!--        android:layout_height="@dimen/_250sdp"-->
+<!--        android:layout_marginStart="@dimen/_200sdp"-->
+<!--        android:src="@drawable/signup_bg2"-->
+<!--        app:layout_constraintBottom_toBottomOf="parent"-->
+<!--        app:layout_constraintStart_toStartOf="parent"-->
+<!--        app:layout_constraintTop_toTopOf="parent"-->
+<!--        app:layout_constraintVertical_bias="0.0" />-->
+
+<!--    <TextView-->
+<!--        android:id="@+id/textView8"-->
+<!--        android:layout_width="wrap_content"-->
+<!--        android:layout_height="wrap_content"-->
+<!--        android:fontFamily="@font/aclonica"-->
+<!--        android:text="Sign Up"-->
+<!--        android:textSize="40sp"-->
+<!--        app:layout_constraintBottom_toBottomOf="parent"-->
+<!--        app:layout_constraintEnd_toEndOf="parent"-->
+<!--        app:layout_constraintHorizontal_bias="0.11"-->
+<!--        app:layout_constraintStart_toStartOf="parent"-->
+<!--        app:layout_constraintTop_toBottomOf="@+id/imageView3"-->
+<!--        app:layout_constraintVertical_bias="0.0" />-->
+
+<!--    <TextView-->
+<!--        android:id="@+id/textView10"-->
+<!--        android:layout_width="wrap_content"-->
+<!--        android:layout_height="wrap_content"-->
+<!--        android:text="Hello! Let’s join with us."-->
+<!--        android:textSize="18sp"-->
+<!--        android:textStyle="italic"-->
+<!--        app:layout_constraintBottom_toBottomOf="parent"-->
+<!--        app:layout_constraintEnd_toEndOf="parent"-->
+<!--        app:layout_constraintHorizontal_bias="0.134"-->
+<!--        app:layout_constraintStart_toStartOf="parent"-->
+<!--        app:layout_constraintTop_toBottomOf="@+id/textView8"-->
+<!--        app:layout_constraintVertical_bias="0.016" />-->
+
+
+<!--    <LinearLayout-->
+<!--        android:id="@+id/email_layout"-->
+<!--        android:layout_width="@dimen/_260sdp"-->
+<!--        android:layout_height="wrap_content"-->
+<!--        android:layout_marginTop="@dimen/_8sdp"-->
+<!--        android:background="@drawable/edittext_bg"-->
+<!--        android:elevation="@dimen/_4sdp"-->
+<!--        android:orientation="horizontal"-->
+<!--        android:padding="@dimen/_3sdp"-->
+<!--        app:layout_constraintEnd_toEndOf="parent"-->
+<!--        app:layout_constraintHorizontal_bias="0.369"-->
+<!--        app:layout_constraintStart_toStartOf="parent"-->
+<!--        app:layout_constraintTop_toBottomOf="@+id/textView10">-->
+
+<!--        <ImageView-->
+<!--            android:layout_width="@dimen/_18sdp"-->
+<!--            android:layout_height="@dimen/_18sdp"-->
+<!--            android:layout_gravity="center_vertical"-->
+<!--            android:src="@drawable/email_1" />-->
+
+<!--        <EditText-->
+<!--            android:id="@+id/email_edittext"-->
+<!--            android:layout_width="0dp"-->
+<!--            android:layout_height="@dimen/_35sdp"-->
+<!--            android:textColorHint="#050505"-->
+<!--            android:layout_weight="1"-->
+<!--            android:textColor="#050505"-->
+<!--            android:background="@android:color/transparent"-->
+<!--            android:hint="Email"-->
+<!--            android:inputType="textEmailAddress"-->
+<!--            android:padding="10dp" />-->
+<!--    </LinearLayout>-->
+
+<!--    <LinearLayout-->
+<!--        android:id="@+id/password_layout"-->
+<!--        android:layout_width="@dimen/_260sdp"-->
+<!--        android:layout_height="wrap_content"-->
+<!--        android:layout_marginTop="@dimen/_8sdp"-->
+<!--        android:background="@drawable/edittext_bg"-->
+<!--        android:elevation="@dimen/_4sdp"-->
+<!--        android:orientation="horizontal"-->
+<!--        android:padding="@dimen/_4sdp"-->
+<!--        app:layout_constraintEnd_toEndOf="parent"-->
+<!--        app:layout_constraintHorizontal_bias="0.369"-->
+<!--        app:layout_constraintStart_toStartOf="parent"-->
+<!--        app:layout_constraintTop_toBottomOf="@+id/email_layout">-->
+
+<!--        <ImageView-->
+<!--            android:layout_width="@dimen/_18sdp"-->
+<!--            android:layout_height="@dimen/_18sdp"-->
+<!--            android:layout_gravity="center_vertical"-->
+<!--            android:src="@drawable/key" />-->
+
+<!--        <EditText-->
+<!--            android:id="@+id/password_edittext"-->
+<!--            android:layout_width="0dp"-->
+<!--            android:layout_height="@dimen/_35sdp"-->
+<!--            android:textColorHint="#050505"-->
+<!--            android:layout_weight="1"-->
+<!--            android:background="@android:color/transparent"-->
+<!--            android:hint="Password"-->
+<!--            android:textColor="#050505"-->
+<!--            android:inputType="textPassword"-->
+<!--            android:padding="10dp" />-->
+<!--        <ImageView-->
+<!--            android:id="@+id/eye_password"-->
+<!--            android:layout_width="wrap_content"-->
+<!--            android:layout_height="wrap_content"-->
+<!--            android:padding="10dp"-->
+<!--            android:src="@drawable/eye_closed"-->
+<!--            android:contentDescription="Toggle Password Visibility" />-->
+<!--    </LinearLayout>-->
+
+<!--    <LinearLayout-->
+<!--        android:id="@+id/confirmpassword_layout"-->
+<!--        android:layout_width="@dimen/_260sdp"-->
+<!--        android:layout_height="wrap_content"-->
+<!--        android:layout_marginTop="8dp"-->
+<!--        android:background="@drawable/edittext_bg"-->
+<!--        android:elevation="@dimen/_4sdp"-->
+<!--        android:orientation="horizontal"-->
+<!--        android:padding="@dimen/_4sdp"-->
+<!--        app:layout_constraintEnd_toEndOf="parent"-->
+<!--        app:layout_constraintHorizontal_bias="0.369"-->
+<!--        app:layout_constraintStart_toStartOf="parent"-->
+<!--        app:layout_constraintTop_toBottomOf="@+id/password_layout">-->
+
+<!--        <ImageView-->
+<!--            android:layout_width="@dimen/_18sdp"-->
+<!--            android:layout_height="@dimen/_18sdp"-->
+<!--            android:layout_gravity="center_vertical"-->
+<!--            android:src="@drawable/key" />-->
+
+<!--        <EditText-->
+<!--            android:id="@+id/confirmpassword_edittext"-->
+<!--            android:layout_width="0dp"-->
+<!--            android:layout_height="@dimen/_35sdp"-->
+<!--            android:layout_weight="1"-->
+<!--            android:background="@android:color/transparent"-->
+<!--            android:hint="Confirm Password"-->
+<!--            android:textColor="#050505"-->
+<!--            android:inputType="textPassword"-->
+<!--            android:textColorHint="#050505"-->
+<!--            android:padding="10dp" />-->
+<!--        <ImageView-->
+<!--            android:id="@+id/eye_confirm_password"-->
+<!--            android:layout_width="wrap_content"-->
+<!--            android:layout_height="wrap_content"-->
+<!--            android:padding="10dp"-->
+<!--            android:src="@drawable/eye_closed"-->
+<!--            android:contentDescription="Toggle Password Visibility" />-->
+<!--    </LinearLayout>-->
+
+<!--    <LinearLayout-->
+<!--        android:id="@+id/linearLayout2"-->
+<!--        android:layout_width="wrap_content"-->
+<!--        android:layout_height="wrap_content"-->
+<!--        android:orientation="horizontal"-->
+<!--        app:layout_constraintBottom_toBottomOf="parent"-->
+<!--        app:layout_constraintEnd_toEndOf="parent"-->
+<!--        app:layout_constraintHorizontal_bias="0.245"-->
+<!--        app:layout_constraintStart_toStartOf="parent"-->
+<!--        app:layout_constraintTop_toBottomOf="@+id/confirmpassword_layout"-->
+<!--        app:layout_constraintVertical_bias="0.0">-->
+
+<!--        <CheckBox-->
+<!--            android:id="@+id/checkBox"-->
+<!--            android:layout_width="wrap_content"-->
+<!--            android:layout_height="wrap_content"-->
+<!--            tools:layout_editor_absoluteX="23dp"-->
+<!--            tools:layout_editor_absoluteY="477dp" />-->
+
+<!--        <TextView-->
+<!--            android:layout_width="wrap_content"-->
+<!--            android:layout_height="wrap_content"-->
+<!--            android:layout_marginLeft="@dimen/_12sdp"-->
+<!--            android:textStyle="italic"-->
+<!--            android:text="I agree with Privacy Policy."-->
+<!--            android:textSize="17sp" />-->
+<!--    </LinearLayout>-->
+
+<!--    <Button-->
+<!--        android:id="@+id/signup_btn"-->
+<!--        android:layout_width="@dimen/_260sdp"-->
+<!--        android:layout_height="@dimen/_42sdp"-->
+<!--        android:backgroundTint="#7A3F99"-->
+<!--        android:fontFamily="@font/aclonica"-->
+<!--        android:padding="1dp"-->
+<!--        android:soundEffectsEnabled="true"-->
+<!--        android:text="Sign Up"-->
+<!--        android:textSize="24sp"-->
+<!--        app:cornerRadius="@dimen/_4sdp"-->
+<!--        app:layout_constraintBottom_toBottomOf="parent"-->
+<!--        app:layout_constraintEnd_toEndOf="parent"-->
+<!--        app:layout_constraintHorizontal_bias="0.424"-->
+<!--        app:layout_constraintStart_toStartOf="parent"-->
+<!--        app:layout_constraintTop_toBottomOf="@+id/linearLayout2"-->
+<!--        app:layout_constraintVertical_bias="0.0" />-->
+
+<!--    <TextView-->
+<!--        android:id="@+id/or"-->
+<!--        android:layout_width="wrap_content"-->
+<!--        android:layout_height="wrap_content"-->
+<!--        android:text="-or-"-->
+<!--        android:textSize="18sp"-->
+<!--        app:layout_constraintBottom_toBottomOf="parent"-->
+<!--        app:layout_constraintEnd_toEndOf="parent"-->
+<!--        app:layout_constraintStart_toStartOf="parent"-->
+<!--        app:layout_constraintTop_toBottomOf="@+id/signup_btn"-->
+<!--        app:layout_constraintVertical_bias="0.0" />-->
+
+<!--    <LinearLayout-->
+<!--        android:id="@+id/linearLayout_gfp"-->
+<!--        android:layout_width="wrap_content"-->
+<!--        android:layout_height="wrap_content"-->
+<!--        android:orientation="horizontal"-->
+<!--        app:layout_constraintBottom_toBottomOf="parent"-->
+<!--        app:layout_constraintEnd_toEndOf="parent"-->
+<!--        app:layout_constraintStart_toStartOf="parent"-->
+<!--        app:layout_constraintTop_toBottomOf="@id/or"-->
+<!--        app:layout_constraintVertical_bias="0.074">-->
+
+<!--        <ImageView-->
+<!--            android:id="@+id/google_img"-->
+<!--            android:layout_width="@dimen/_28sdp"-->
+<!--            android:layout_height="@dimen/_28sdp"-->
+<!--            android:src="@drawable/google" />-->
+
+<!--&lt;!&ndash;        <ImageView&ndash;&gt;-->
+<!--&lt;!&ndash;            android:layout_width="@dimen/_28sdp"&ndash;&gt;-->
+<!--&lt;!&ndash;            android:layout_height="@dimen/_28sdp"&ndash;&gt;-->
+<!--&lt;!&ndash;            android:layout_marginLeft="@dimen/_10sdp"&ndash;&gt;-->
+<!--&lt;!&ndash;            android:src="@drawable/facebook" />&ndash;&gt;-->
+
+<!--&lt;!&ndash;        <ImageView&ndash;&gt;-->
+<!--&lt;!&ndash;            android:id="@+id/phone_img"&ndash;&gt;-->
+<!--&lt;!&ndash;            android:layout_width="@dimen/_28sdp"&ndash;&gt;-->
+<!--&lt;!&ndash;            android:layout_height="@dimen/_28sdp"&ndash;&gt;-->
+<!--&lt;!&ndash;            android:layout_marginLeft="@dimen/_10sdp"&ndash;&gt;-->
+<!--&lt;!&ndash;            android:src="@drawable/phone" />&ndash;&gt;-->
+<!--    </LinearLayout>-->
+
+<!--    <ImageView-->
+<!--        android:id="@+id/signup_bottombg_1"-->
+<!--        android:layout_width="wrap_content"-->
+<!--        android:layout_height="@dimen/_90sdp"-->
+<!--        android:src="@drawable/signup_bottom_bg"-->
+<!--        app:layout_constraintBottom_toBottomOf="parent"-->
+<!--        app:layout_constraintEnd_toEndOf="parent"-->
+<!--        app:layout_constraintHorizontal_bias="0.0"-->
+<!--        app:layout_constraintStart_toStartOf="parent"-->
+<!--        app:layout_constraintTop_toBottomOf="@id/linearLayout_gfp"-->
+<!--        app:layout_constraintVertical_bias="0.0" />-->
+
+<!--    <ImageView-->
+<!--        android:id="@+id/imageView4"-->
+<!--        android:layout_width="wrap_content"-->
+<!--        android:layout_height="wrap_content"-->
+<!--        android:layout_marginTop="@dimen/_27sdp"-->
+<!--        android:src="@drawable/signup_bottom_bg1"-->
+<!--        app:layout_constraintEnd_toEndOf="parent"-->
+<!--        app:layout_constraintHorizontal_bias="0.0"-->
+<!--        app:layout_constraintStart_toStartOf="parent"-->
+<!--        app:layout_constraintTop_toBottomOf="@id/linearLayout_gfp" />-->
+
+<!--    <TextView-->
+<!--        android:id="@+id/login"-->
+<!--        android:layout_width="wrap_content"-->
+<!--        android:layout_height="wrap_content"-->
+<!--        android:text="@string/you_already_have_an_acccount_login"-->
+<!--        android:textColor="#fff"-->
+<!--        android:textSize="19sp"-->
+<!--        app:layout_constraintBottom_toBottomOf="@+id/signup_bottombg_1"-->
+<!--        app:layout_constraintEnd_toEndOf="@+id/imageView4"-->
+<!--        app:layout_constraintHorizontal_bias="0.563"-->
+<!--        app:layout_constraintStart_toStartOf="@+id/imageView4"-->
+<!--        app:layout_constraintTop_toTopOf="@+id/imageView4"-->
+<!--        app:layout_constraintVertical_bias="0.603" />-->
+
+<!--</androidx.constraintlayout.widget.ConstraintLayout>-->
+
+
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#EFE4F7"
+    tools:context=".Signup">
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:fillViewport="true">
+
+        <LinearLayout
+            android:id="@+id/main"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:layout_gravity="center"
+            android:padding="16dp">
+
+            <TextView
+                android:id="@+id/textView8"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/_20sdp"
+                android:layout_gravity="center"
+                android:fontFamily="@font/aclonica"
+                android:textColor="#050505"
+                android:textStyle="bold"
+                android:text="Create Account"
+                android:textSize="35sp"
+                />
+
+            <TextView
+                android:id="@+id/textView10"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="#050505"
+                android:text="Hello! Let’s join with us."
+                android:layout_gravity="center"
+                android:textSize="19sp"
+                android:textStyle="italic"
+                />
+
+
+            <androidx.cardview.widget.CardView xmlns:android="http://schemas.android.com/apk/res/android"
+                xmlns:app="http://schemas.android.com/apk/res-auto"
+                android:id="@+id/signup_card"
+                android:layout_width="@dimen/_290sdp"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/_30sdp"
+                android:layout_margin="16dp"
+                android:backgroundTint="#5E3380"
+                app:cardCornerRadius="36dp"
+                app:contentPadding="@dimen/_19sdp"
+                app:cardUseCompatPadding="true"
+                app:cardElevation="15dp"
+                android:padding="19dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:layout_marginTop="@dimen/_19sdp"
+                    android:gravity="center_horizontal">
+
+                    <!-- Email -->
+                    <LinearLayout
+                        android:id="@+id/email_layout"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:background="@drawable/edittext_bg"
+                        android:orientation="horizontal"
+                        android:padding="6dp">
+
+                        <ImageView
+                            android:layout_width="18dp"
+                            android:layout_height="18dp"
+                            android:layout_gravity="center_vertical"
+                            android:src="@drawable/email_1" />
+
+                        <EditText
+                            android:id="@+id/email_edittext"
+                            android:layout_width="0dp"
+                            android:layout_height="39dp"
+                            android:layout_weight="1"
+                            android:textColor="#050505"
+                            android:textColorHint="#808080"
+                            android:hint="Email"
+                            android:background="@android:color/transparent"
+                            android:inputType="textEmailAddress"
+                            android:padding="10dp" />
+                    </LinearLayout>
+
+                    <!-- Password -->
+                    <LinearLayout
+                        android:id="@+id/password_layout"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="16dp"
+                        android:background="@drawable/edittext_bg"
+                        android:orientation="horizontal"
+                        android:padding="6dp">
+
+                        <ImageView
+                            android:layout_width="18dp"
+                            android:layout_height="18dp"
+                            android:layout_gravity="center_vertical"
+                            android:src="@drawable/key" />
+
+                        <EditText
+                            android:id="@+id/password_edittext"
+                            android:layout_width="0dp"
+                            android:layout_height="39dp"
+                            android:layout_weight="1"
+                            android:textColor="#050505"
+                            android:textColorHint="#808080"
+                            android:hint="Password"
+                            android:inputType="textPassword"
+                            android:background="@android:color/transparent"
+                            android:padding="10dp" />
+
+                        <ImageView
+                            android:id="@+id/eye_password"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:padding="10dp"
+                            android:src="@drawable/eye_closed" />
+                    </LinearLayout>
+
+                    <!-- Confirm Password -->
+                    <LinearLayout
+                        android:id="@+id/confirmpassword_layout"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="16dp"
+                        android:background="@drawable/edittext_bg"
+                        android:orientation="horizontal"
+                        android:padding="6dp">
+
+                        <ImageView
+                            android:layout_width="18dp"
+                            android:layout_height="18dp"
+                            android:layout_gravity="center_vertical"
+                            android:src="@drawable/key" />
+
+                        <EditText
+                            android:id="@+id/confirmpassword_edittext"
+                            android:layout_width="0dp"
+                            android:layout_height="39dp"
+                            android:layout_weight="1"
+                            android:textColor="#050505"
+                            android:textColorHint="#808080"
+                            android:hint="Confirm Password"
+                            android:inputType="textPassword"
+                            android:background="@android:color/transparent"
+                            android:padding="10dp" />
+
+                        <ImageView
+                            android:id="@+id/eye_confirm_password"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:padding="10dp"
+                            android:src="@drawable/eye_closed" />
+                    </LinearLayout>
+
+                    <!-- Checkbox -->
+                    <LinearLayout
+                        android:id="@+id/linearLayout2"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical">
+
+                        <CheckBox
+                            android:id="@+id/checkBox"
+                            android:buttonTint="#EDE8F2"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="8dp"
+                            android:textColor="#fff"
+                            android:text="I agree with Privacy Policy."
+                            android:textStyle="italic"
+                            android:textSize="17sp" />
+                    </LinearLayout>
+
+                    <!-- Sign Up Button -->
+                    <Button
+                        android:id="@+id/signup_btn"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="12dp"
+                        android:backgroundTint="#D186DC"
+                        android:fontFamily="@font/aclonica"
+                        android:padding="9dp"
+                        android:textColor="#fff"
+                        android:layout_marginBottom="@dimen/_19sdp"
+                        android:text="Sign Up"
+                        android:textSize="22sp"
+                        app:cornerRadius="8dp" />
+                </LinearLayout>
+            </androidx.cardview.widget.CardView>
+
+
+            <TextView
+                android:id="@+id/or"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="-or continue with- "
+                android:layout_gravity="center"
+                android:textColor="#050505"
+                android:textSize="18sp"
+                />
+
+            <ImageView
+                android:id="@+id/google_img"
+                android:layout_width="@dimen/_28sdp"
+                android:layout_gravity="center"
+                android:layout_height="@dimen/_28sdp"
+                android:layout_marginTop="@dimen/_9sdp"
+                android:src="@drawable/google" />
+
+
+
+            <TextView
+                android:id="@+id/login"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/_7sdp"
+                android:layout_marginBottom="@dimen/_7sdp"
+                android:text="@string/you_already_have_an_acccount_login"
+                android:textColor="#050505"
+                android:layout_gravity="center"
+                android:textSize="19sp"
+                />
+
+
+        </LinearLayout>
+    </ScrollView>
+
+</RelativeLayout>

@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    tools:showIn="design_navigation_view">
+
+    <!-- Separator Line -->
+    <item android:title="">
+        <menu />
+    </item>
+
+    <!-- Messaging Tools Section -->
+    <!-- Apply the custom text appearance here -->
+    <item android:title="Messaging Tools"
+        android:textAppearance="@style/Theme.AppCompat.DayNight">
+        <menu>
+            <item
+                android:id="@+id/create_new_group"
+                android:icon="@drawable/group_add"
+                android:title="Create New Group" />
+            <item
+                android:id="@+id/scheduled_messages"
+                android:icon="@drawable/scheduled_msg_icon"
+                android:title="Scheduled Messages" />
+            <item
+                android:id="@+id/drafts"
+                android:icon="@drawable/scheduled_msg_icon"
+                android:title="Drafts" />
+            <item
+                android:id="@+id/temporary_chat_room"
+                android:icon="@drawable/temporary_chatroom"
+                android:title="Temporary Chat Room" />
+        </menu>
+    </item>
+
+    <!-- Separator Line -->
+    <item android:title="">
+        <menu />
+    </item>
+
+    <!-- App & Security Section -->
+    <!-- Apply the custom text appearance here -->
+    <item android:title="App and Security"
+        android:textAppearance="@style/NavDrawerHeadingText">
+        <menu>
+
+            <item
+                android:id="@+id/privacy_and_security"
+                android:title="Privacy and Security "
+                android:icon="@drawable/privacy_and_security"/>
+            <item
+                android:id="@+id/settings"
+                android:icon="@drawable/settings"
+                android:title="Settings" />
+            <item
+                android:id="@+id/nav_feedback"
+                android:icon="@drawable/feedback"
+                android:title="Feedback" />
+
+            <item
+                android:id="@+id/nav_about"
+                android:icon="@android:drawable/ic_menu_info_details"
+            android:title="About CircleUp" />
+
+
+        </menu>
+    </item>
+
+    <!-- Separator Line -->
+    <item android:title="">
+        <menu />
+    </item>
+
+    <!-- Account Actions Section -->
+    <!-- Apply the custom text appearance here -->
+    <item android:title="Account Actions"
+        android:textAppearance="@style/NavDrawerHeadingText">
+        <menu>
+            <item
+                android:id="@+id/logout"
+                android:title="Logout"
+                android:icon="@drawable/logout_icon"/>
+            <item
+                android:id="@+id/nav_delete_account"
+                android:title="Delete Account"
+                android:icon="@drawable/delete_account_icon"/>
+        </menu>
+    </item>
+
+    <!-- Separator Line -->
+    <item android:title="">
+        <menu />
+    </item>
+
+    <!-- Separator Line -->
+    <item android:title="">
+        <menu />
+    </item>
+
+
+
+
+
+
+</menu>

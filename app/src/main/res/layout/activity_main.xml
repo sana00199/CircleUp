@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.drawerlayout.widget.DrawerLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/drawerlayout"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fitsSystemWindows="true"
+    tools:context=".MainActivity"
+    tools:openDrawer="start">
+
+    <!-- Main Content (Toolbar + Bottom Navigation) -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical">
+
+        <!-- Toolbar -->
+        <include layout="@layout/nav_appbar_main"/>
+
+        <!-- Main Content Area -->
+        <androidx.coordinatorlayout.widget.CoordinatorLayout
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1">
+
+            <FrameLayout
+                android:id="@+id/container"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"/>
+
+            <!-- Bottom Navigation in CardView -->
+            <androidx.cardview.widget.CardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_margin="@dimen/_8sdp"
+                android:elevation="@dimen/_12sdp"
+                app:cardCornerRadius="@dimen/_19sdp"
+                app:cardBackgroundColor="@android:color/white"
+                app:cardElevation="@dimen/_12sdp"
+                android:layout_gravity="bottom">
+
+                <com.google.android.material.bottomnavigation.BottomNavigationView
+                    android:id="@+id/bottomNavigation"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="@android:color/white"
+                    app:menu="@menu/bottom_navigation_menu"/>
+            </androidx.cardview.widget.CardView>
+
+        </androidx.coordinatorlayout.widget.CoordinatorLayout>
+    </LinearLayout>
+
+    <com.google.android.material.navigation.NavigationView
+        android:id="@+id/navigationView"
+        android:layout_width="@dimen/_210sdp"
+        android:layout_height="match_parent"
+        android:layout_gravity="start"
+        android:fitsSystemWindows="true"
+        app:headerLayout="@layout/nav_header_layout"
+        app:itemBackground="@android:color/transparent"
+        app:menu="@menu/navigation_items"
+        android:background="@android:color/white"
+        android:elevation="12dp"
+        app:itemIconTint="@color/black"
+        app:itemTextColor="@color/black"
+        android:listDivider="@drawable/nav_divider" /> <!-- Add custom grey divider -->
+
+
+
+
+
+</androidx.drawerlayout.widget.DrawerLayout>
+

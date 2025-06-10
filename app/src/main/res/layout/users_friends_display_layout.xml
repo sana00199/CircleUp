@@ -1,0 +1,161 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:orientation="vertical"
+    android:padding="3dp"
+    android:layout_marginBottom="@dimen/_5sdp"
+    android:layout_height="wrap_content">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginBottom="@dimen/_4sdp"
+        >
+
+        <de.hdodenhof.circleimageview.CircleImageView
+            android:id="@+id/users_profile_image"
+            android:layout_width="@dimen/_50sdp"
+            android:layout_height="@dimen/_50sdp"
+            android:src="@drawable/default_profile_img"/>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginLeft="@dimen/_9sdp"
+            android:orientation="vertical">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal">
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:textColor="#C53DDC"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="@dimen/_6sdp"
+                    android:text="CircleUp User  "
+                    android:id="@+id/users_profile_name"
+                    android:textAlignment="textStart"
+                    android:textSize="@dimen/_12sdp"
+                    android:textStyle="bold"/>
+
+                <TextView
+                    android:id="@+id/unread_text"
+                    android:layout_width="@dimen/_30sdp"
+                    android:layout_height="@dimen/_20sdp"
+                    android:layout_alignParentEnd="true"
+                    android:layout_gravity="bottom"
+                    android:gravity="center"
+                    android:padding="4dp"
+                    android:text="Unread"
+                    android:textSize="17sp"
+                    android:layout_marginLeft="@dimen/_45sdp"
+                    android:textStyle="bold|italic"
+                    android:textColor="#110114"
+                    android:paddingLeft="@dimen/_4sdp"
+                    android:paddingRight="@dimen/_4sdp"
+                    android:visibility="invisible"
+                    android:background="@drawable/unread_badge"
+                    />
+
+                <ImageView
+                    android:id="@+id/users_online_status"
+                    android:layout_width="@dimen/_16sdp"
+                    android:layout_height="15dp"
+                    android:layout_marginTop="@dimen/_6sdp"
+                    android:layout_marginLeft="@dimen/_18sdp"
+                    android:layout_gravity="center_vertical"
+                    android:visibility="invisible"
+                    android:src="@drawable/online"
+                    />
+
+
+
+
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal">
+
+            <TextView
+                android:layout_width="@dimen/_110sdp"
+                android:layout_height="18dp"
+                android:layout_marginTop="@dimen/_2sdp"
+
+                android:text="User Status       "
+                android:id="@+id/users_profile_status"
+                android:textAlignment="textStart"
+                android:textSize="12sp"
+                android:textStyle="italic"/>
+
+                <TextView
+                    android:id="@+id/textViewChatTimestamp"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginLeft="@dimen/_9sdp"
+                    android:layout_gravity="end"
+                    android:visibility="gone"
+                    android:textSize="13sp"
+                    android:textColor="@android:color/darker_gray"
+                    tools:text="10:30 PM" />
+
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/request_sent_text"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Request Sent"
+                android:textSize="16sp"
+                android:textColor="@android:color/darker_gray"
+                android:visibility="gone"
+                android:layout_gravity="center"/>
+
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal">
+
+                <Button
+                    android:id="@+id/request_accept_button"
+                    android:layout_width="wrap_content"
+                    android:layout_height="@dimen/_30sdp"
+                    android:text="Accept"
+                    android:visibility="invisible"
+                    android:backgroundTint="#5B8928"
+                    />
+
+                <Button
+                    android:id="@+id/send_message_btn"
+                    android:layout_width="wrap_content"
+                    android:layout_height="@dimen/_30sdp"
+                    android:text="Message"
+                    android:visibility="invisible"
+                    android:backgroundTint="#5B8928"
+                    />
+
+                <Button
+                    android:id="@+id/request_cancel_button"
+                    android:layout_width="wrap_content"
+                    android:layout_height="@dimen/_30sdp"
+                    android:text="Cancel"
+                    android:visibility="invisible"
+                    android:backgroundTint="#E66258"
+                    />
+
+
+            </LinearLayout>
+        </LinearLayout>
+
+
+
+    </LinearLayout>
+
+
+
+</LinearLayout>

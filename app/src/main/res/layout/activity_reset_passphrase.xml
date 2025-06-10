@@ -1,0 +1,208 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/main"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="#EFE4F7"
+    tools:context=".ResetPassphraseActivity">
+
+    <androidx.appcompat.widget.Toolbar
+        android:id="@+id/toolbar_reset_passphrase"
+        android:layout_width="match_parent"
+        android:layout_height="?attr/actionBarSize"
+        android:background="#7A3F99"
+        app:title="Reset Passphrase"
+        app:titleTextColor="@android:color/white" />
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:padding="24dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <!-- Warning Section -->
+            <TextView
+                android:id="@+id/reset_warning_title"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Warning: Resetting Passphrase"
+                android:textSize="18sp"
+                android:textColor="#FF0000"
+            android:textStyle="bold"
+            android:gravity="center"
+            android:layout_marginBottom="8dp"/>
+
+            <TextView
+                android:id="@+id/reset_warning_message"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="This action will permanently delete your old encryption keys. You will lose access to all your past encrypted messages."
+                android:textSize="16sp"
+                android:textColor="@android:color/black"
+                android:gravity="center"
+                android:layout_marginBottom="24dp"/>
+
+
+            <!-- *** NEW TEXTVIEW ADDED HERE *** -->
+            <TextView
+                android:id="@+id/reset_warning_impact_message"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="This means ALL your past encrypted messages are PERMANENTLY LOST and UNREADABLE, both on your side AND on the side of the people you chatted with in those conversations. You will need to start new chats with them."
+                android:textSize="16sp"
+                android:textColor="@android:color/black"
+                android:textStyle="bold"
+            android:gravity="center"
+            android:layout_marginBottom="24dp"/>
+            <!-- *** END NEW TEXTVIEW *** -->
+
+            <TextView
+                android:id="@+id/reset_warning_confirm"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textStyle="bold"
+                android:textSize="16sp"
+                android:textColor="@android:color/black"
+                android:gravity="center"
+                android:text="Please confirm you understand this data loss before proceeding."
+                android:layout_marginBottom="24dp"/>
+
+            <!-- Optional: Identity Verification Section (Recommended for security) -->
+            <TextView
+                android:id="@+id/identity_verification_title"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Verify Your Identity"
+                android:textSize="18sp"
+                android:textColor="@android:color/black"
+                android:textStyle="bold"
+                android:gravity="center"
+                android:layout_marginTop="16dp"
+                android:layout_marginBottom="8dp"/>
+
+            <TextView
+                android:id="@+id/identity_verification_message"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Please enter your current account password to confirm your identity before resetting your security passphrase."
+                android:textSize="16sp"
+                android:textColor="@android:color/black"
+                android:gravity="center"
+                android:layout_marginBottom="16dp"/>
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/layout_verify_email"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                style="@style/Widget.MaterialComponents.TextInputLayout.FilledBox"
+                android:layout_marginBottom="8dp">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/editTextVerifyEmail"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="Account Email"
+                    android:inputType="textEmailAddress"
+                    android:enabled="false"
+                android:textColor="#961CAB"/>
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/layout_verify_password"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                app:passwordToggleEnabled="true"
+                style="@style/Widget.MaterialComponents.TextInputLayout.FilledBox"
+                android:layout_marginBottom="16dp">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/editTextVerifyPassword"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="Account Password"
+                    android:inputType="textPassword"
+                    android:textColor="#961CAB"/>
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <!-- New Passphrase Section -->
+            <TextView
+                android:id="@+id/new_passphrase_title"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Set New Security Passphrase"
+                android:textSize="18sp"
+                android:textColor="@android:color/black"
+                android:textStyle="bold"
+                android:gravity="center"
+                android:layout_marginTop="16dp"
+                android:layout_marginBottom="8dp"/>
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/layout_new_passphrase"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                app:passwordToggleEnabled="true"
+                style="@style/Widget.MaterialComponents.TextInputLayout.FilledBox"
+                android:layout_marginBottom="8dp">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/editTextNewPassphrase"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="New Passphrase"
+                    android:inputType="textPassword"
+                    android:textColor="#961CAB"/>
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/layout_confirm_new_passphrase"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                app:passwordToggleEnabled="true"
+                style="@style/Widget.MaterialComponents.TextInputLayout.FilledBox"
+                android:layout_marginBottom="24dp">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/editTextConfirmNewPassphrase"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="Confirm New Passphrase"
+                    android:inputType="textPassword"
+                    android:textColor="#961CAB"/>
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <!-- Action Button -->
+            <Button
+                android:id="@+id/buttonResetPassphrase"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Reset and Set New Passphrase"
+                android:textColor="@color/white"
+                android:backgroundTint="#7A3F99"
+                android:paddingLeft="24dp"
+                android:paddingRight="24dp"
+                android:layout_gravity="center_horizontal"
+                android:layout_marginBottom="16dp"
+                />
+
+            <ProgressBar
+                android:id="@+id/progressBarResetPassphrase"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center_horizontal"
+                android:visibility="gone"/>
+
+
+        </LinearLayout>
+    </ScrollView>
+
+</LinearLayout>

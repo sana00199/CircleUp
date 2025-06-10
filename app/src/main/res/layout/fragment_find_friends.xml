@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:padding="@dimen/_10sdp"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    tools:context=".navigation_fragments.FindFriendsFragment">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:padding="10dp"
+        android:orientation="vertical">
+
+        <androidx.cardview.widget.CardView
+            android:id="@+id/search_card_view"
+            android:layout_width="match_parent"
+            android:layout_height="40dp"
+            android:layout_margin="8dp"
+            app:cardCornerRadius="22dp"
+            app:cardElevation="4dp">
+
+
+            <!--When you click the search icon,
+            then it works and displays your search query hints.-->
+            <SearchView
+                android:id="@+id/search_view"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:queryHint="Search by name"
+                android:iconifiedByDefault="true" />
+
+        </androidx.cardview.widget.CardView>
+
+
+        <!-- Your RecyclerView goes below -->
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/find_friends_recycler_view"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"/>
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/noUsersText"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:layout_marginTop="50dp"
+        android:gravity="center"
+        android:text="No textView"
+        android:textColor="@color/gray"
+        android:textSize="@dimen/_20sdp"
+        android:visibility="gone" />
+
+
+
+
+</FrameLayout>

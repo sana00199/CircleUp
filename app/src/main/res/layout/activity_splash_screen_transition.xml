@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/main"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:layout_gravity="center"
+    android:background="#7A3F99"
+    android:gravity="center"
+    android:orientation="vertical"
+    tools:context=".splash_screen.Splash_Screen_Transition">
+
+
+    <ImageView
+        android:id="@+id/splash_image_white"
+        android:layout_width="@dimen/_150sdp"
+        android:layout_height="@dimen/_150sdp"
+        android:layout_marginTop="@dimen/_60sdp"
+        android:layout_gravity="center"
+        android:src="@drawable/black_cu_remver"
+         />
+
+    <TextView
+        android:id="@+id/textView_white"
+        android:layout_width="320dp"
+        android:layout_height="74dp"
+        android:fontFamily="@font/aclonica"
+        android:gravity="center"
+        android:text="Welcome to CircleUp  "
+        android:textColor="#FFFFFF"
+        android:textSize="16sp"
+        android:textStyle="italic"
+        />
+
+    <TextView
+        android:id="@+id/bysana"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+
+        android:fontFamily="@font/aclonica"
+        android:gravity="center"
+        android:text="BY SANA"
+        android:textColor="#BCB5B5"
+        android:textSize="14sp"
+        android:textStyle="italic"
+         />
+
+
+</LinearLayout>

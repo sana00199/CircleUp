@@ -1,0 +1,333 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:background="#EFE4F7"
+        android:gravity="center_horizontal">
+
+        <androidx.appcompat.widget.Toolbar
+            android:id="@+id/toolbar_setting_profile"
+            android:layout_width="match_parent"
+            android:layout_height="?attr/actionBarSize"
+            android:background="#7A3F99"
+            app:title="@string/settings_profile_title"
+            app:titleTextColor="@android:color/white" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="@dimen/_15sdp"
+            android:gravity="center_horizontal">
+
+            <TextView
+                android:id="@+id/textView"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/_16sdp"
+                android:fontFamily="@font/aclonica"
+                android:textColor="@color/black"
+                android:gravity="center"
+                android:text="Profile"
+                android:textSize="48sp"
+                android:textStyle="bold" />
+
+
+
+            <!-- NEW: Status TextView -->
+            <TextView
+                android:id="@+id/setupStatusTextView"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:textColor="@android:color/darker_gray"
+                android:textSize="14sp"
+                android:text=""
+            android:gravity="center_horizontal"
+            android:visibility="gone"/> <!-- Initially hidden -->
+            <!-- END NEW -->
+
+
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginTop="@dimen/_20sdp">
+                <de.hdodenhof.circleimageview.CircleImageView
+                    android:id="@+id/profile_image"
+                    android:layout_width="@dimen/_100sdp"
+                    android:layout_marginLeft="@dimen/_16sdp"
+                    android:layout_height="@dimen/_100sdp"
+                    android:src="@drawable/default_profile_img"
+                    android:contentDescription="Delete Profile Image"
+                    android:elevation="4dp"
+                    app:civ_border_color="#FF000000"
+                    app:civ_border_width="@dimen/_1sdp" />
+
+                <ImageView
+                    android:id="@+id/delete_profile_image"
+                    android:layout_width="@dimen/_30sdp"
+                    android:layout_height="@dimen/_30sdp"
+                    android:layout_gravity="bottom"
+                    android:layout_marginTop="@dimen/_10sdp"
+                    app:tint="#9C27B0"
+                    android:contentDescription="Delete Profile Image"
+                    android:src="@drawable/delete_img" />
+            </LinearLayout>
+
+            <!-- In activity_setting_profile.xml -->
+
+            <!-- ... existing layout above Profile Info Fields ... -->
+
+            <!-- Profile Info Fields (Now using TextInputLayout) -->
+
+            <!-- Username Field -->
+            <com.google.android.material.textfield.TextInputLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+            android:layout_marginStart="16dp"
+            android:layout_marginEnd="16dp"
+            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/username_edittext"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Username"
+            android:inputType="textPersonName"
+            android:textColor="@color/black"/>
+            <!-- Removed layout_weight, layout_height (wrap_content is typical), background -->
+            <!-- Removed textColorHint -->
+
+        </com.google.android.material.textfield.TextInputLayout>
+
+
+        <!-- Email Field -->
+        <com.google.android.material.textfield.TextInputLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:id="@+id/email_input_layout"
+            android:layout_marginTop="16dp"
+            android:layout_marginStart="16dp"
+            android:layout_marginEnd="16dp"
+            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/email_edittext"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Email (non editable)"
+            android:inputType="textEmailAddress"
+            android:textColor="@color/black"
+            android:enabled="false"/>
+
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <!-- Status Field -->
+        <com.google.android.material.textfield.TextInputLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:layout_marginStart="16dp"
+            android:layout_marginEnd="16dp"
+            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/status_edittext"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Status"
+            android:inputType="textCapSentences"
+            android:textColor="@color/black"/>
+
+
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <!-- ... rest of your layout below Status ... -->
+
+            <androidx.cardview.widget.CardView
+                android:id="@+id/signup_card"
+                android:layout_width="@dimen/_280sdp"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/_9sdp"
+                android:backgroundTint="#E3D0E7"
+                app:cardCornerRadius="36dp"
+                android:visibility="gone"
+                app:contentPadding="@dimen/_14sdp"
+                android:layout_gravity="center"
+                app:cardUseCompatPadding="true"
+                app:cardElevation="5dp"
+                android:padding="10dp">
+
+                <LinearLayout
+                    android:id="@+id/passphraseInputLayout"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:visibility="gone"
+                    android:paddingTop="@dimen/_16sdp"
+                    android:paddingBottom="@dimen/_16sdp"
+                    android:paddingStart="@dimen/_12sdp"
+                    android:paddingEnd="@dimen/_12sdp">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Set your Security Passphrase/PIN. This is essential for recovering your encrypted messages if you get a new phone. If you forget it Circleup cannot help you recover your account and messages. Keep it very safe!"
+                        android:textColor="#7A3F99"
+                        android:textSize="17sp"
+                        android:textStyle="italic"
+                        android:layout_marginBottom="@dimen/_8sdp"/>
+
+                    <com.google.android.material.textfield.TextInputLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        app:hintTextColor="#808080"
+                        app:boxStrokeColor="#808080"
+                        app:endIconMode="password_toggle">
+
+                        <com.google.android.material.textfield.TextInputEditText
+                            android:id="@+id/editTextEncryptionPassphrase"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:hint="Security Passphrase"
+                            android:inputType="textPassword"
+                            android:textColor="#050505"
+                            android:background="@android:drawable/editbox_background"/>
+                    </com.google.android.material.textfield.TextInputLayout>
+
+
+                    <com.google.android.material.textfield.TextInputLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/_8sdp"
+                        app:hintTextColor="#808080"
+                        app:boxStrokeColor="#808080"
+                        app:endIconMode="password_toggle">
+
+                        <com.google.android.material.textfield.TextInputEditText
+                            android:id="@+id/editTextConfirmPassphrase"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:background="@android:drawable/editbox_background"
+                            android:hint="Confirm Passphrase"
+                            android:inputType="textPassword"
+                            android:textColor="#050505"
+                            />
+                    </com.google.android.material.textfield.TextInputLayout>
+
+                </LinearLayout>
+            </androidx.cardview.widget.CardView>
+
+
+
+
+
+
+            <!-- Recovery Code Section (Initially Hidden) -->
+            <LinearLayout
+                android:id="@+id/recoveryCodeLayout"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp"
+                android:layout_marginTop="24dp"
+                android:layout_marginStart="16dp"
+                android:layout_marginEnd="16dp"
+                android:background="@drawable/rounded_corner_background"
+                android:elevation="4dp"
+                android:visibility="gone">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="🔑 Backup Your Recovery Code"
+                    android:textStyle="bold"
+                    android:textSize="18sp"
+                    android:gravity="center_horizontal"
+                    android:textColor="#9C27B0"/>
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="This unique code is your ONLY way to regain access to your encrypted messages if you forget your passphrase. Please write it down accurately and keep it in a safe, secret place (like a physical notebook). DO NOT share it or store it digitally unless it's in a trusted password manager."
+                    android:textColor="@android:color/black"
+                    android:textSize="14sp"
+                    android:gravity="center_horizontal"/>
+
+                <TextView
+                    android:id="@+id/textViewRecoveryCode"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="16dp"
+                    android:padding="12dp"
+                    android:background="#EEEEEE"
+                android:text="YOUR_RECOVERY_CODE_WILL_APPEAR_HERE"
+                android:textColor="@android:color/black"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:gravity="center"
+                android:fontFamily="monospace"/>
+
+
+                <Button
+                    android:id="@+id/buttonCopyRecoveryCode"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center_horizontal"
+                    android:layout_marginTop="16dp"
+                    android:text="Copy Code"
+                    android:drawableStart="@drawable/ic_copy"
+                    android:drawableTint="#9C27B0"
+                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"/>
+
+            </LinearLayout>
+
+            <!-- Add a small spacer if needed -->
+            <Space
+                android:layout_width="match_parent"
+                android:layout_height="24dp"
+                android:id="@+id/spacerAfterRecoveryCode"
+                android:visibility="gone"/> <!-- Hide initially -->
+
+
+            <!-- This button will appear AFTER the recovery code is shown -->
+            <Button
+                android:id="@+id/button_proceed_to_app"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="16dp"
+                android:layout_marginEnd="16dp"
+                android:layout_marginTop="8dp"
+                android:text="Proceed to App"
+                android:visibility="gone" />
+
+
+
+            <Button
+                android:id="@+id/welcome_login_btn"
+                android:layout_width="@dimen/_210sdp"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/_6sdp"
+                android:backgroundTint="#7A3F99"
+                android:fontFamily="@font/aclonica"
+                android:text="Save"
+                android:padding="12dp"
+                android:textSize="24sp"
+                android:layout_marginBottom="@dimen/_20sdp"/>
+
+        </LinearLayout>
+    </LinearLayout>
+</ScrollView>

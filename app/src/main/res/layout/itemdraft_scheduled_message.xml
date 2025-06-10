@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.cardview.widget.CardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_marginBottom="12dp"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:backgroundTint="#E3D0E7"
+    app:cardCornerRadius="36dp"
+    app:contentPadding="@dimen/_10sdp"
+    app:cardUseCompatPadding="true"
+    app:cardElevation="5dp"
+
+    android:radius="12dp">
+
+    <LinearLayout
+        android:orientation="vertical"
+        android:layout_width="match_parent"
+        android:padding="@dimen/_16sdp"
+        android:layout_height="wrap_content">
+
+        <TextView
+            android:id="@+id/tvReceiver"
+            android:text="Receiver Names"
+            android:textSize="18sp"
+            android:textColor="#5B0A6A"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content" />
+
+
+        <TextView
+            android:id="@+id/tvMessage"
+            android:text="Message"
+            android:textSize="16sp"
+            android:textColor="@color/black"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"/>
+
+        <TextView
+            android:id="@+id/tvTime"
+            android:text="Scheduled Time"
+            android:textSize="14sp"
+            android:textColor="#888"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"/>
+
+        <LinearLayout
+            android:orientation="horizontal"
+            android:layout_marginTop="10dp"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+
+            <Button
+                android:id="@+id/btnEdit"
+                android:text="Edit"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:textColor="#fff"
+                android:backgroundTint="#5B035B"
+                android:layout_weight="1"/>
+
+            <Button
+                android:id="@+id/btnDelete"
+                android:text="Delete"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:backgroundTint="#5B035B"
+                android:layout_weight="1"
+                android:textColor="#fff"
+                android:layout_marginStart="8dp"/>
+        </LinearLayout>
+
+    </LinearLayout>
+</androidx.cardview.widget.CardView>

@@ -1,0 +1,170 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/main"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="#EFE4F7"
+    tools:context=".PrivacyAndSecurity">
+
+    <!-- Toolbar -->
+    <androidx.appcompat.widget.Toolbar
+        android:id="@+id/toolbar_privacy_security"
+        android:layout_width="match_parent"
+        android:layout_height="?attr/actionBarSize"
+        android:background="#7A3F99"
+        app:title="@string/privacy_security_title"
+        app:titleTextColor="@android:color/white" />
+
+    <!-- Descriptive Text -->
+    <TextView
+        android:id="@+id/description_text"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingStart="24dp"
+        android:paddingEnd="24dp"
+        android:layout_marginTop="@dimen/_9sdp"
+        android:paddingTop="16dp"
+        android:paddingBottom="16dp"
+        android:text="@string/privacy_security_description"
+        android:textSize="14sp"
+        android:textColor="#050505"
+        android:fontFamily="sans-serif-italic"
+        android:gravity="center_horizontal" />
+
+    <!-- List Item: Unlock Secure Account (Passkeys) -->
+    <LinearLayout
+        android:id="@+id/item_unlock_account"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingTop="12dp"
+        android:layout_marginTop="@dimen/_14sdp"
+        android:paddingBottom="12dp"
+        android:paddingStart="24dp"
+        android:paddingEnd="24dp"
+        android:clickable="true"
+        android:focusable="true"
+        android:background="?attr/selectableItemBackground"> <!-- Add ripple effect on click -->
+
+        <ImageView
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:src="@drawable/lock_icon"
+            android:layout_marginEnd="16dp"
+            app:tint="#5E3380" />
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="@string/unlock_account_title"
+            android:textSize="16sp"
+            android:textColor="#050505" />
+
+
+    </LinearLayout>
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:layout_marginStart="24dp"
+        android:layout_marginEnd="24dp"
+        android:background="@android:color/darker_gray" />
+
+    <!-- List Item: Change Passphrase Key -->
+    <LinearLayout
+        android:id="@+id/item_change_password"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:gravity="center_vertical"
+    android:paddingTop="12dp"
+    android:paddingBottom="12dp"
+        android:layout_marginTop="@dimen/_14sdp"
+    android:paddingStart="24dp"
+    android:paddingEnd="24dp"
+    android:clickable="true"
+    android:focusable="true"
+    android:background="?attr/selectableItemBackground">
+
+    <ImageView
+        android:layout_width="24dp"
+        android:layout_height="24dp"
+        android:src="@drawable/ic_password"
+        android:layout_marginEnd="16dp"
+        app:tint="#5E3380" />
+
+    <TextView
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:text="@string/change_password_title"
+    android:textSize="16sp"
+    android:textColor="#050505" />
+
+<!--    <ImageView-->
+<!--        android:layout_width="@dimen/_20sdp"-->
+<!--        android:layout_height="@dimen/_20sdp"-->
+<!--        android:src="@drawable/arrow_right_to_line_svgrepo_com"-->
+<!--        app:tint="@android:color/darker_gray" />-->
+</LinearLayout>
+
+<View
+android:layout_width="match_parent"
+android:layout_height="1dp"
+android:layout_marginStart="24dp"
+android:layout_marginEnd="24dp"
+android:background="@android:color/darker_gray" />
+
+
+<LinearLayout
+android:id="@+id/item_change_auth_password"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:gravity="center_vertical"
+    android:paddingTop="12dp"
+    android:paddingBottom="12dp"
+    android:layout_marginTop="@dimen/_14sdp"
+    android:paddingStart="24dp"
+    android:paddingEnd="24dp"
+    android:clickable="true"
+    android:focusable="true"
+    android:background="?attr/selectableItemBackground">
+
+<ImageView
+android:layout_width="24dp"
+android:layout_height="24dp"
+android:src="@drawable/email_icon"
+    android:layout_marginEnd="16dp"
+    app:tint="#5E3380" />
+
+<TextView
+android:layout_width="0dp"
+android:layout_height="wrap_content"
+android:layout_weight="1"
+android:text="@string/change_auth_password_title"
+    android:textSize="16sp"
+    android:textColor="#050505" />
+
+<!--<ImageView-->
+<!--android:layout_width="@dimen/_20sdp"-->
+<!--android:layout_height="@dimen/_20sdp"-->
+<!--android:src="@drawable/arrow_right_to_line_svgrepo_com"-->
+<!--app:tint="@android:color/darker_gray" />-->
+    </LinearLayout>
+
+<View
+android:layout_width="match_parent"
+android:layout_height="1dp"
+android:layout_marginStart="24dp"
+android:layout_marginEnd="24dp"
+android:background="@android:color/darker_gray" />
+
+
+
+    </LinearLayout>

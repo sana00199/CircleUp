@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/main"
+    android:layout_width="match_parent"
+    android:layout_gravity="center"
+    android:layout_height="match_parent"
+    android:padding="@dimen/_10sdp"
+    android:background="#EFE4F7"
+    android:orientation="vertical"
+    tools:context=".ProfileUserInfoActivity">
+
+    <TextView
+        android:id="@+id/textView8"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/_30sdp"
+        android:layout_gravity="center"
+        android:fontFamily="@font/aclonica"
+        android:textColor="#050505"
+        android:textStyle="bold"
+        android:padding="@dimen/_14sdp"
+        android:text="Add To Contacts"
+        android:textSize="18sp"
+        />
+
+
+    <androidx.cardview.widget.CardView xmlns:android="http://schemas.android.com/apk/res/android"
+        xmlns:app="http://schemas.android.com/apk/res-auto"
+        android:id="@+id/signup_card"
+        android:layout_width="@dimen/_280sdp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/_3sdp"
+        android:backgroundTint="#E3D0E7"
+        app:cardCornerRadius="36dp"
+        app:contentPadding="@dimen/_14sdp"
+        android:layout_gravity="center"
+        app:cardUseCompatPadding="true"
+        app:cardElevation="5dp"
+        android:padding="10dp">
+
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:orientation="vertical"
+        >
+
+
+    <de.hdodenhof.circleimageview.CircleImageView
+        android:id="@+id/visit_profile_img"
+        android:layout_width="wrap_content"
+        android:layout_gravity="center"
+        android:layout_height="@dimen/_150sdp"
+        android:src="@drawable/default_profile_img"
+         />
+
+    <TextView
+        android:id="@+id/visit_user_name"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:padding="@dimen/_10sdp"
+        android:text="User Name  "
+        android:textAlignment="center"
+        android:layout_gravity="center"
+        android:textColor="#C53DDC"
+        android:textSize="25sp"
+        android:textStyle="bold|italic"
+         />
+
+        <TextView
+
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:gravity="start"
+            android:padding="@dimen/_9sdp"
+            android:layout_gravity="start"
+            android:text=" STATUS: "
+            android:textColor="@color/black"
+
+            android:textSize="17dp"
+            android:textStyle="italic|bold"
+            />
+
+    <TextView
+        android:id="@+id/visit_user_status"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:padding="@dimen/_10sdp"
+        android:layout_gravity="center"
+        android:text="My Status , of the user new     "
+        android:textColor="@color/gray"
+        android:textSize="18dp"
+        android:textStyle="italic"
+        />
+
+    <Button
+        android:id="@+id/sendmsg_request_btn"
+        android:layout_width="wrap_content"
+        android:layout_height="@dimen/_45sdp"
+        android:backgroundTint="#7A3F99"
+        android:fontFamily="@font/aclonica"
+        android:padding="10dp"
+        android:soundEffectsEnabled="true"
+        android:layout_gravity="center"
+        android:text="  Send Request  "
+        android:textColor="#ffff"
+        android:textSize="16sp"
+        />
+
+    <Button
+        android:id="@+id/declinemsg_request_btn"
+        android:layout_width="wrap_content"
+        android:layout_height="57dp"
+        android:layout_marginTop="@dimen/_9sdp"
+        android:backgroundTint="#7A3F99"
+        android:fontFamily="@font/aclonica"
+        android:padding="10dp"
+        android:soundEffectsEnabled="true"
+        android:text="Cancel Chat Request "
+        android:layout_gravity="center"
+        android:textSize="15sp"
+        android:visibility="invisible"
+       />
+    </LinearLayout>
+
+    </androidx.cardview.widget.CardView>
+
+
+</LinearLayout>

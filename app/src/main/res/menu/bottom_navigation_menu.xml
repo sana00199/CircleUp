@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+
+    <menu xmlns:android="http://schemas.android.com/apk/res/android">
+        <item
+            android:id="@+id/bottom_chat"
+            android:icon="@drawable/chat"
+            android:title="Chats"/>
+
+        <item
+            android:id="@+id/bottom_groups"
+            android:icon="@drawable/groups"
+            android:title="Groups"/>
+
+
+    <item
+        android:id="@+id/bottom_contacts"
+        android:icon="@drawable/contacts"
+        android:title="My Contacts"/>
+
+    <item
+        android:id="@+id/bottom_requests"
+        android:icon="@drawable/gamee"
+        android:title="Requests"/>
+    <item
+        android:id="@+id/bottom_find_friends"
+        android:icon="@drawable/request"
+        android:title="Find Friends"/>
+
+
+
+
+
+    </menu>
+

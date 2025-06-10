@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="#EFE4F7"
+    tools:context=".RecoverAccountWithCodeActivity">
+
+    <androidx.appcompat.widget.Toolbar
+        android:id="@+id/toolbar_recover_code"
+        android:layout_width="match_parent"
+        android:layout_height="?attr/actionBarSize"
+        android:background="#7A3F99"
+        app:title="Recover Account"
+        app:titleTextColor="@android:color/white" />
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:fillViewport="true">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="16dp"
+            android:gravity="center_horizontal">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="🔑 Account Recovery"
+                android:textStyle="bold"
+                android:textSize="20sp"
+                android:gravity="center_horizontal"
+                android:textColor="#771389"
+                android:layout_marginBottom="16dp"/>
+
+            <TextView
+                android:id="@+id/recoveryWarningTextView"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Enter the Recovery Code you saved during your account setup. This will unlock your Private Key and restore access to your encrypted messages. If you enter the wrong code multiple times, your account may be locked for a period."
+                android:textColor="@android:color/black"
+                android:textSize="14sp"
+                android:layout_marginBottom="16dp"/>
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/recoveryCodeInputLayout"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                app:hintTextColor="#808080"
+                app:boxStrokeColor="#808080">
+                <!-- app:endIconMode="password_toggle" Maybe add this if code is very long/sensitive -->
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/editTextRecoveryCode"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="Enter Recovery Code"
+                    android:inputType="textMultiLine|textNoSuggestions"
+                    android:minLines="3"
+                    android:gravity="top|start"
+                    android:textColor="#050505"
+                    android:background="@android:drawable/editbox_background"/>
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <Button
+                android:id="@+id/buttonSubmitRecoveryCode"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="24dp"
+                android:text="Submit Code"
+                android:layout_gravity="center_horizontal"/>
+
+            <TextView
+                android:id="@+id/recoveryStatusTextView"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:textColor="@android:color/darker_gray"
+                android:textSize="14sp"
+                android:text=""
+                android:gravity="center_horizontal"
+                android:visibility="gone"/>
+
+            <ProgressBar
+                android:id="@+id/recoveryProgressBar"
+                style="?android:attr/progressBarStyle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:visibility="gone"
+                android:layout_gravity="center_horizontal"/>
+
+            <!-- Maybe add a link to the "Reset Passphrase" option as a fallback -->
+            <TextView
+                android:id="@+id/textViewFallbackToReset"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="32dp"
+                android:text="Cannot recover? Reset Passphrase Instead"
+                android:textColor="#771389"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:clickable="true"
+                android:focusable="true"
+                android:background="?android:attr/selectableItemBackground"
+                android:padding="8dp"
+                android:layout_gravity="center_horizontal"/>
+
+
+        </LinearLayout>
+    </ScrollView>
+</LinearLayout>

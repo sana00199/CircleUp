@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.cardview.widget.CardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:card_view="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    card_view:cardElevation="6dp"
+    card_view:cardCornerRadius="16dp"
+    android:layout_margin="10dp"
+    android:background="@color/white">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:padding="12dp"
+        android:gravity="center_vertical">
+
+        <!-- Default Room Icon -->
+        <de.hdodenhof.circleimageview.CircleImageView
+            android:id="@+id/room_profile_image"
+            android:layout_width="54dp"
+            android:layout_height="54dp"
+            android:src="@drawable/temporary_chatroom"
+            android:layout_marginEnd="12dp" />
+
+        <!-- Room Info -->
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/room_name"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Room Name"
+                android:textStyle="bold"
+                android:textSize="18sp"
+                android:textColor="@color/black" />
+
+            <TextView
+                android:id="@+id/room_status"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Temporary Room"
+                android:textSize="14sp"
+                android:textColor="@color/teal_700" />
+
+            <!-- Optional: Expiry time -->
+            <TextView
+                android:id="@+id/room_expiry_time"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Expires at: 12:30 PM"
+                android:textSize="12sp"
+                android:textColor="@color/gray"
+                android:visibility="gone" />
+        </LinearLayout>
+
+    </LinearLayout>
+</androidx.cardview.widget.CardView>

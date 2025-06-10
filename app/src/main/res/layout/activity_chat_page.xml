@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/main_chat_layout"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".ChatPageActivity">
+
+    <!-- Toolbar inside CardView -->
+    <androidx.cardview.widget.CardView
+        android:layout_width="match_parent"
+        android:layout_height="@dimen/_90sdp"
+        android:id="@+id/cardview_upper"
+        app:cardCornerRadius="@dimen/_10sdp"
+        app:cardElevation="@dimen/_2sdp"
+        app:cardBackgroundColor="@color/white"
+        app:cardUseCompatPadding="true">
+
+        <com.google.android.material.appbar.AppBarLayout
+            android:id="@+id/app_bar_layout"
+            android:layout_width="match_parent"
+            android:layout_height="@dimen/_95sdp">
+
+            <androidx.appcompat.widget.Toolbar
+                android:id="@+id/chat_toolbar"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:background="#33063A"
+                app:contentInsetStartWithNavigation="0dp"
+                app:titleTextColor="@android:color/white"/>
+        </com.google.android.material.appbar.AppBarLayout>
+
+    </androidx.cardview.widget.CardView>
+
+    <!-- RecyclerView for messages -->
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/privatemsges_list_of_users"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_above="@+id/cardview_input"
+        android:layout_below="@id/cardview_upper"/>
+
+    <!-- Bottom Message Input inside CardView -->
+    <androidx.cardview.widget.CardView
+        android:id="@+id/cardview_input"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        app:cardCornerRadius="@dimen/_10sdp"
+        app:cardElevation="@dimen/_2sdp"
+        app:cardBackgroundColor="@android:color/white"
+        app:cardUseCompatPadding="true">
+
+        <LinearLayout
+            android:id="@+id/chat_linear_layout"
+            android:layout_width="match_parent"
+            android:layout_height="@dimen/_55sdp"
+            android:padding="@dimen/_4sdp"
+            android:orientation="horizontal"
+            android:background="#33063A">
+
+
+
+            <!-- Message Input Box inside CardView -->
+            <androidx.cardview.widget.CardView
+                android:layout_width="0dp"
+                android:layout_height="@dimen/_37sdp"
+                android:layout_weight="1"
+                android:layout_marginStart="@dimen/_4sdp"
+                android:layout_marginTop="@dimen/_3sdp"
+                android:layout_marginEnd="@dimen/_10sdp"
+                app:cardBackgroundColor="#CDB9D7"
+                app:cardCornerRadius="@dimen/_25sdp">
+
+                <EditText
+                    android:id="@+id/input_msg"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:layout_marginStart="@dimen/_10sdp"
+                    android:layout_gravity="center"
+                    android:fontFamily="@font/poppins_regular"
+                    android:hint="Type The Messages..."
+                    android:textColor="@color/black"
+                    android:textSize="@dimen/_11sdp"
+                    android:textColorHint="#A8A6A6"
+                    android:paddingStart="10dp"
+                    android:padding="8dp"
+                    android:background="@android:color/transparent"/>
+            </androidx.cardview.widget.CardView>
+
+
+            <!-- Send Button inside CardView -->
+
+
+
+
+
+
+            <!-- Send Button inside CardView -->
+            <androidx.cardview.widget.CardView
+                android:id="@+id/sendbtnn"
+                android:layout_width="@dimen/_36sdp"
+                android:layout_height="@dimen/_36sdp"
+                android:layout_marginTop="@dimen/_5sdp"
+                android:layout_marginEnd="@dimen/_5sdp"
+                app:cardBackgroundColor="#CDB9D7"
+                app:cardCornerRadius="@dimen/_25sdp">
+
+                <ImageButton
+                    android:id="@+id/send_msg_btn"
+                    android:layout_width="46dp"
+                    android:layout_height="46dp"
+                    android:layout_gravity="center"
+                    android:background="@null"
+                    android:src="@drawable/send_msg"/>
+            </androidx.cardview.widget.CardView>
+
+            <ImageButton
+                android:id="@+id/send_imgmsg_btn"
+                android:layout_width="47dp"
+                android:layout_height="48dp"
+                android:layout_marginRight="2dp"
+                android:layout_marginLeft="2dp"
+                android:layout_gravity="center"
+                android:background="@null"
+                android:src="@drawable/gallery"/>
+
+        </LinearLayout>
+
+    </androidx.cardview.widget.CardView>
+
+</RelativeLayout>

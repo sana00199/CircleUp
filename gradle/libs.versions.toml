@@ -1,0 +1,124 @@
+[versions]
+agp = "8.9.2"
+bcprovJdk15on = "1.70"
+bcpkixJdk15on = "1.70"
+bip39 = "0.1.1"
+circleimageview = "3.1.0"
+cloudinaryAndroid = "2.0.2"
+compiler = "4.15.1"
+converterGson = "2.9.0"
+elapsedTime = "0.1.5"
+firebaseAdmin = "9.2.0"
+firebaseAdminVersion = "9.0.0"
+firebaseAuthVersion = "23.2.0"
+firebaseBom = "33.10.0"
+firebaseDatabaseVersion = "21.0.0"
+firebaseMessaging = "24.1.0"
+firebaseMessagingVersion = "23.3.1"
+firebaseUiDatabaseVersion = "8.0.2"
+githubGlide = "4.15.1"
+glide = "4.16.0"
+glideVersion = "4.16.0"
+googleApiClient = "2.2.0"
+googleAuthLibraryOauth2Http = "0.26.0"
+googleFirebaseMessaging = "23.1.2"
+googleOauthClientJetty = "1.32.1"
+gson = "2.10.1"
+junit = "4.13.2"
+junitVersion = "1.2.1"
+espressoCore = "3.6.1"
+appcompat = "1.7.0"
+material = "1.12.0"
+activity = "1.10.1"
+constraintlayout = "2.2.1"
+googleGmsGoogleServices = "4.4.2"
+firebaseAuth = "23.2.0"
+firebaseDatabase = "21.0.0"
+firebaseStorage = "21.0.1"
+okhttp = "4.9.1"
+onesignal = "5.1.33"
+onesignalOnesignal = "5.1.30"
+onesignalVersion = "5.1.33"
+photoview = "2.3.0"
+picasso = "2.8"
+playServicesAuth = "21.3.0"
+firebaseFirestore = "25.1.4"
+recyclerview = "1.4.0"
+retrofit = "2.9.0"
+roomCompiler = "2.6.1"
+roomRuntime = "2.6.1"
+sdpAndroid = "1.1.1"
+supabaseAndroid = "1.0.0"
+volley = "1.2.1"
+cardview = "1.0.0"
+workRuntime = "2.9.0"
+scenecore = "1.0.0-alpha04"
+
+[libraries]
+bcpkix-jdk15on = { module = "org.bouncycastle:bcpkix-jdk15on", version.ref = "bcpkixJdk15on" }
+bcprov-jdk15on = { module = "org.bouncycastle:bcprov-jdk15on", version.ref = "bcprovJdk15on" }
+bip39 = { module = "io.github.novacrypto:bip39", version.ref = "bip39" }
+circleimageview = { module = "de.hdodenhof:circleimageview", version.ref = "circleimageview" }
+cloudinary-android = { module = "com.cloudinary:cloudinary-android", version.ref = "cloudinaryAndroid" }
+compiler = { module = "com.github.bumptech.glide:compiler", version.ref = "compiler" }
+converter-gson = { module = "com.squareup.retrofit2:converter-gson", version.ref = "converterGson" }
+converter-scalars = { module = "com.squareup.retrofit2:converter-scalars", version.ref = "converterGson" }
+elapsed-time = { module = "io.github.novacrypto:elapsed-time", version.ref = "elapsedTime" }
+firebase-admin = { module = "com.google.firebase:firebase-admin", version.ref = "firebaseAdmin" }
+firebase-admin-v900 = { module = "com.google.firebase:firebase-admin", version.ref = "firebaseAdminVersion" }
+firebase-analytics = { module = "com.google.firebase:firebase-analytics" }
+#noinspection SimilarGradleDependency
+firebase-auth-v2100 = { module = "com.google.firebase:firebase-auth", version.ref = "firebaseAuthVersion" }
+firebase-bom = { module = "com.google.firebase:firebase-bom", version.ref = "firebaseBom" }
+#noinspection SimilarGradleDependency
+firebase-database-v2000 = { module = "com.google.firebase:firebase-database", version.ref = "firebaseDatabaseVersion" }
+firebase-messaging = { module = "com.google.firebase:firebase-messaging", version.ref = "firebaseMessaging" }
+firebase-messaging-v2312 = { module = "com.google.firebase:firebase-messaging", version.ref = "googleFirebaseMessaging" }
+firebase-messaging-v2331 = { module = "com.google.firebase:firebase-messaging", version.ref = "firebaseMessagingVersion" }
+firebaseui-firebase-ui-database = { module = "com.firebaseui:firebase-ui-database", version.ref = "firebaseUiDatabaseVersion" }
+#noinspection SimilarGradleDependency
+glide = { module = "com.github.bumptech.glide:glide", version.ref = "glide" }
+#noinspection SimilarGradleDependency
+glide-v4120 = { module = "com.github.bumptech.glide:glide", version.ref = "glideVersion" }
+glide-v4151 = { module = "com.github.bumptech.glide:glide", version.ref = "githubGlide" }
+google-api-client = { module = "com.google.api-client:google-api-client", version.ref = "googleApiClient" }
+google-auth-library-oauth2-http = { module = "com.google.auth:google-auth-library-oauth2-http", version.ref = "googleAuthLibraryOauth2Http" }
+google-firebase-auth = { module = "com.google.firebase:firebase-auth" }
+google-oauth-client-jetty = { module = "com.google.oauth-client:google-oauth-client-jetty", version.ref = "googleOauthClientJetty" }
+gson = { module = "com.google.code.gson:gson", version.ref = "gson" }
+junit = { group = "junit", name = "junit", version.ref = "junit" }
+ext-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }
+espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }
+appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "appcompat" }
+material = { group = "com.google.android.material", name = "material", version.ref = "material" }
+activity = { group = "androidx.activity", name = "activity", version.ref = "activity" }
+constraintlayout = { group = "androidx.constraintlayout", name = "constraintlayout", version.ref = "constraintlayout" }
+#noinspection SimilarGradleDependency
+firebase-auth = { group = "com.google.firebase", name = "firebase-auth", version.ref = "firebaseAuth" }
+#noinspection SimilarGradleDependency
+firebase-database = { group = "com.google.firebase", name = "firebase-database", version.ref = "firebaseDatabase" }
+firebase-storage = { group = "com.google.firebase", name = "firebase-storage", version.ref = "firebaseStorage" }
+okhttp = { module = "com.squareup.okhttp3:okhttp", version.ref = "okhttp" }
+#onesignal = { module = "com.onesignal:OneSignal", version.ref = "onesignal" }
+#onesignal-v460 = { module = "com.onesignal:OneSignal", version.ref = "onesignalVersion" }
+onesignal-v5130 = { module = "com.onesignal:OneSignal", version.ref = "onesignalOnesignal" }
+photoview = { module = "com.github.chrisbanes:PhotoView", version.ref = "photoview" }
+picasso = { module = "com.squareup.picasso:picasso", version.ref = "picasso" }
+play-services-auth = { module = "com.google.android.gms:play-services-auth", version.ref = "playServicesAuth" }
+firebase-firestore = { group = "com.google.firebase", name = "firebase-firestore", version.ref = "firebaseFirestore" }
+recyclerview = { group = "androidx.recyclerview", name = "recyclerview", version.ref = "recyclerview" }
+retrofit = { module = "com.squareup.retrofit2:retrofit", version.ref = "retrofit" }
+room-runtime = { module = "androidx.room:room-runtime", version.ref = "roomRuntime" }
+room-compiler = { module = "androidx.room:room-compiler", version.ref = "roomCompiler" }
+sdp-android = { module = "com.intuit.sdp:sdp-android", version.ref = "sdpAndroid" }
+supabase-android = { module = "io.supabase:supabase-android", version.ref = "supabaseAndroid" }
+volley = { group = "com.android.volley", name = "volley", version.ref = "volley" }
+cardview = { group = "androidx.cardview", name = "cardview", version.ref = "cardview" }
+work-runtime = { module = "androidx.work:work-runtime", version.ref = "workRuntime" }
+onesignal = { module = "com.onesignal:OneSignal", version.ref = "onesignal" }
+scenecore = { group = "androidx.xr.scenecore", name = "scenecore", version.ref = "scenecore" }
+
+[plugins]
+android-application = { id = "com.android.application", version.ref = "agp" }
+google-gms-google-services = { id = "com.google.gms.google-services", version.ref = "googleGmsGoogleServices" }
+

@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:background="@drawable/dialog_bg"
+    android:padding="22dp">
+
+
+    <TextView
+        android:id="@+id/textView8"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:fontFamily="@font/aclonica"
+        android:textColor="#050505"
+        android:textStyle="italic"
+        android:padding="@dimen/_14sdp"
+        android:text="Enter Room Name:"
+        android:textSize="20sp"
+        />
+
+    <!-- Room Name Input -->
+    <EditText
+        android:id="@+id/editRoomName"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="Enter Room Name"
+        android:background="@drawable/rounded_edittext"
+        android:padding="12dp"
+        android:textColor="#000"
+        android:textColorHint="#888" />
+
+
+    <!-- Time Picker -->
+    <TextView
+        android:id="@+id/textTimePicker"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Select Expiry Time"
+        android:textColor="#0F0E0F"
+        android:textSize="19sp"
+        android:layout_marginTop="12dp"
+        android:padding="@dimen/_9sdp"
+        android:background="@drawable/rounded_edittext"
+        android:gravity="center" />
+
+
+    <Button
+        android:id="@+id/generateid"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:fontFamily="@font/aclonica"
+        android:textColor="#050505"
+        android:textStyle="italic"
+        android:backgroundTint="#DEC2E4"
+        android:padding="@dimen/_5sdp"
+        android:layout_marginTop="@dimen/_15sdp"
+        android:text="Click to generate Room ID"
+        android:textSize="17sp"
+        />
+
+    <!-- Generated Room ID Display -->
+    <LinearLayout
+        android:id="@+id/generate_room_id_layout"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:visibility="gone"
+        android:layout_marginTop="10dp"
+        android:gravity="center_vertical">
+
+        <TextView
+            android:id="@+id/textRoomId"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:textSize="20sp"
+            android:layout_height="wrap_content"
+            android:text="ID: 8H7K2L9Q"
+            android:textColor="#5E3380"
+            android:textStyle="bold" />
+
+        <Button
+            android:id="@+id/btnCopyId"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="end"
+            android:text="Copy"
+            android:textAllCaps="false"
+            android:backgroundTint="#5E3380"
+            android:textColor="#fff" />
+    </LinearLayout>
+
+
+
+    <!-- Invite Button -->
+    <Button
+        android:id="@+id/btnInvite"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="     Invite Someone   "
+        android:layout_gravity="center"
+        android:textSize="18sp"
+        android:textAllCaps="false"
+        android:layout_marginTop="20dp"
+        android:backgroundTint="#DEC2E4"
+        android:textColor="#050505" />
+
+    <!-- Create Button -->
+    <Button
+        android:id="@+id/btnCreateRoom"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="      Create Room     "
+        android:layout_gravity="center"
+        android:textAllCaps="false"
+        android:layout_marginTop="21dp"
+        android:layout_marginBottom="@dimen/_24sdp"
+        android:backgroundTint="#5E3380"
+        android:textColor="#fff" />
+
+</LinearLayout>

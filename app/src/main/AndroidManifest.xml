@@ -1,0 +1,176 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <uses-feature
+        android:name="android.hardware.telephony"
+        android:required="false" />
+    <uses-feature
+        android:name="android.hardware.camera"
+        android:required="false" />
+
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.CAMERA" /> <!-- WRITE_EXTERNAL_STORAGE is needed pre-Android Q for saving camera photos -->
+    <uses-permission
+        android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="28" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.VIBRATE" />
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.RECEIVE_SMS" />
+    <uses-permission android:name="android.permission.READ_SMS" />
+    <uses-permission android:name="android.permission.SEND_SMS" />
+    <uses-permission android:name="android.permission.READ_PHONE_STATE" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+
+    <application
+        android:name=".CircleUpApp"
+        android:allowBackup="true"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:fullBackupContent="@xml/backup_rules"
+        android:icon="@mipmap/app_icon_circleup"
+        android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:screenOrientation="portrait"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.CircleUp"
+        android:usesCleartextTraffic="true"
+        tools:targetApi="31">
+        <activity
+            android:name=".RecoverAccountWithCodeActivity"
+            android:exported="false" />
+        <activity
+            android:name=".About"
+            android:exported="false" />
+        <activity
+            android:name=".ResetPassphraseActivity"
+            android:exported="false" />
+        <activity
+            android:name=".splash_screen.Splash_Screen_Transition"
+            android:exported="false">
+
+            <!-- NO intent-filter here -->
+        </activity>
+        <activity
+            android:name=".ChangeAuthPasswordActivity"
+            android:exported="false" />
+        <activity
+            android:name=".ChangePassphraseActivity"
+            android:exported="false" />
+        <activity
+            android:name=".Feedback"
+            android:exported="false" />
+        <activity
+            android:name=".UnlockAccountPassphereActivity"
+            android:exported="false" />
+        <activity
+            android:name=".PrivacyAndSecurity"
+            android:exported="false" />
+        <activity
+            android:name=".drawingboard_chatgroup.YOUR_DRAWING_ACTIVITY_CLASS"
+            android:exported="false" />
+        <activity
+            android:name=".temporary_chat_room.TemporaryRoomChatActivity"
+            android:exported="false" />
+        <activity
+            android:name=".temporary_chat_room.ShowRoomActivity"
+            android:exported="false" />
+        <activity
+            android:name=".temporary_chat_room.TemporaryChatRoomMain"
+            android:exported="false" />
+        <activity
+            android:name=".DraftScheduled"
+            android:exported="false" />
+        <activity
+            android:name=".ScheduledMSG"
+            android:exported="false" />
+        <activity
+            android:name=".ChatImgFullScreenViewer"
+            android:exported="false" />
+        <activity
+            android:name=".AdminViewGroupMembersActivity"
+            android:exported="false" />
+        <activity
+            android:name=".AdminViewAllGroupsActivity"
+            android:exported="false" />
+        <activity
+            android:name=".GroupSettingsActivity"
+            android:exported="false" />
+        <activity
+            android:name=".ChatPageActivity"
+            android:exported="false" />
+        <activity android:name=".CreateGroupActivity" />
+        <activity
+            android:name=".ProfileUserInfoActivity"
+            android:exported="false" />
+        <activity
+            android:name=".GroupChatActivity"
+            android:exported="false" />
+        <activity
+            android:name=".PasswordRecoveryActivity"
+            android:exported="false" />
+        <activity
+            android:name=".EnableDisableUserActivity"
+            android:exported="false" />
+        <activity
+            android:name=".AdminViewAllUsersActivity"
+            android:exported="false" />
+        <activity
+            android:name=".AdminDashboard"
+            android:exported="false" />
+        <activity
+            android:name=".AdminSplashScreen"
+            android:exported="false" />
+
+        <meta-data
+            android:name="com.google.android.gms.auth.APP_ID"
+            android:value="@string/default_web_client_id" />
+
+        <activity
+            android:name=".Setting_profile"
+            android:exported="false" />
+        <activity
+            android:name=".PhoneLogin"
+            android:exported="false" />
+        <activity
+            android:name=".Signup"
+            android:exported="false" />
+        <activity
+            android:name=".Login"
+            android:exported="false" />
+        <activity
+            android:name=".Welcome_Screen"
+            android:exported="false" />
+        <activity
+            android:name=".splash_screen.Splash_Screen"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+        <activity
+            android:name=".MainActivity"
+            android:exported="false" /> <!-- <service -->
+        <activity
+            android:name=".FullscreenImageActivity"
+            android:exported="false" />
+
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
+    </application>
+
+</manifest>

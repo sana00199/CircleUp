@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/group_settings"
+        android:title="Group Settings"/>
+
+    <item
+        android:id="@+id/clear_chat"
+        android:title="Clear Chat"/>
+
+    <item
+        android:id="@+id/exit_group"
+        android:title="Exit Group"/>
+
+    <item
+        android:id="@+id/start_drawing_chat"
+    android:title="Start Shared Drawing" />
+
+
+
+</menu>

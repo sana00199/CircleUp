@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:paddingStart="16dp"
+    android:paddingEnd="16dp"
+    android:paddingTop="8dp"
+    android:paddingBottom="8dp"
+    android:gravity="center_vertical"
+    android:background="?android:attr/selectableItemBackground"> <!-- Optional ripple effect -->
+
+    <!-- Assuming you have a CircleImageView dependency like 'de.hdodenhof:circleimageview' -->
+    <de.hdodenhof.circleimageview.CircleImageView
+        android:id="@+id/contact_profile_image"
+        android:layout_width="42dp"
+        android:layout_height="42dp"
+        android:src="@drawable/default_profile_img" /> <!-- Use your default profile image -->
+
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_weight="1"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="16dp">
+
+        <TextView
+            android:id="@+id/text_contact_name"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="16sp"
+            android:textColor="#C53DDC"
+            android:textStyle="bold"
+            android:text="Contact Name" />
+
+        <TextView
+            android:id="@+id/text_contact_status"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="13sp"
+            android:textColor="@android:color/darker_gray"
+            android:text="Status" />
+    </LinearLayout>
+
+    <CheckBox
+        android:id="@+id/checkbox_select_contact"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content" />
+
+</LinearLayout>

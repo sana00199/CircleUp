@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#EFE4F7">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:padding="@dimen/_10sdp"
+        android:layout_gravity="center">
+
+        <TextView
+            android:id="@+id/textView"
+            android:layout_width="@dimen/_200sdp"
+            android:layout_height="@dimen/_55sdp"
+            android:fontFamily="@font/aclonica"
+            android:layout_marginTop="@dimen/_30sdp"
+            android:gravity="center"
+            android:textColor="#101010"
+            android:text="CircleUp"
+            android:textSize="42sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/textView2"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Welcome!  "
+            android:textColor="#101010"
+            android:textSize="22sp"
+            android:textStyle="bold|italic" />
+
+        <TextView
+            android:id="@+id/textView3"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Let us get started   "
+            android:textColor="#101010"
+            android:textSize="22sp"
+            android:textStyle="bold|italic" />
+
+        <ImageView
+            android:id="@+id/imageView"
+            android:layout_width="@dimen/_230sdp"
+            android:layout_marginTop="@dimen/_10sdp"
+            android:layout_height="@dimen/_210sdp"
+            android:src="@drawable/welcome_pic" />
+
+        <Button
+            android:id="@+id/welcome_login_btn"
+            android:layout_width="@dimen/_220sdp"
+            android:layout_height="@dimen/_45sdp"
+            android:backgroundTint="#D186DC"
+            android:fontFamily="@font/aclonica"
+            android:layout_marginTop="@dimen/_15sdp"
+            android:textColor="#fff"
+            app:cornerRadius="@dimen/_4sdp"
+            android:drawablePadding="17dp"
+            android:padding="10dp"
+            android:soundEffectsEnabled="true"
+            android:text="Login"
+            android:textSize="24sp" />
+
+        <Button
+            android:id="@+id/welcome_signup_btn"
+            android:layout_width="@dimen/_220sdp"
+            android:layout_height="@dimen/_45sdp"
+            android:backgroundTint="#622A81"
+            android:fontFamily="@font/aclonica"
+            android:layout_marginTop="@dimen/_5sdp"
+            android:padding="1dp"
+            android:textColor="#ffff"
+
+            app:cornerRadius="@dimen/_4sdp"
+            android:text="Sign Up"
+            android:textSize="24sp" />
+
+        <TextView
+            android:id="@+id/textView4"
+            android:layout_width="@dimen/_280sdp"
+            android:layout_height="@dimen/_45sdp"
+            android:text="An Android-Based Next Generation Social Messaging App"
+            android:textAlignment="center"
+            android:layout_marginTop="@dimen/_15sdp"
+            android:textColor="#101010"
+            android:textStyle="italic"
+            android:textSize="18sp" />
+
+    </LinearLayout>
+</ScrollView>

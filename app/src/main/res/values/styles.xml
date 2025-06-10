@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <style name="AlertDialog" parent="Base.Theme.CircleUp" />
+
+
+    <style name="MyCustomDialogTheme" parent="Theme.AppCompat.Light.Dialog.Alert">
+        <!-- Customize your dialog here. Examples: -->
+        <item name="colorPrimary">@color/your_primary_color</item> <!-- Change title/button color -->
+        <item name="colorAccent">@color/your_accent_color</item>   <!-- Change accent color -->
+        <item name="android:textColorPrimary">@color/your_text_color</item> <!-- Change title text color -->
+        <item name="android:textColorAlertDialogListItem">@color/your_text_color</item> <!-- Change message text color -->
+        <item name="android:background">@color/your_dialog_background</item> <!-- Change dialog background color -->
+        <!-- You can add more items to customize fonts, padding, etc. -->
+    </style>
+
+
+
+
+    <style name="NavDrawerHeadingText" parent="TextAppearance.AppCompat.Small">
+        <item name="android:textColor">#C53DDC</item> <!-- Your desired color for LIGHT mode -->
+        <!-- Optional: <item name="android:textStyle">bold</item> -->
+    </style>
+
+</resources>

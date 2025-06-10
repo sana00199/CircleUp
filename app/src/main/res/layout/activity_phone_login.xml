@@ -1,0 +1,146 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/main"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:padding="11dp"
+    android:orientation="vertical"
+    android:gravity="center_horizontal"
+    tools:context=".PhoneLogin">
+
+    <ImageView
+        android:id="@+id/pone_veri_logo"
+        android:layout_width="@dimen/_200sdp"
+        android:layout_height="@dimen/_200sdp"
+        android:src="@drawable/phoneveri_logo" />
+
+    <Button
+        android:id="@+id/signup_btn"
+        android:layout_width="@dimen/_250sdp"
+        android:layout_height="@dimen/_45sdp"
+        android:backgroundTint="#FFFDFD"
+        android:fontFamily="@font/aclonica"
+        android:padding="1dp"
+        android:soundEffectsEnabled="true"
+        android:text="Phone Verification"
+        android:textColor="#100C0C"
+        android:textSize="24sp"
+        app:cornerRadius="@dimen/_2sdp" />
+
+    <TextView
+        android:id="@+id/textView11"
+        android:layout_width="@dimen/_270sdp"
+        android:layout_height="@dimen/_40sdp"
+        android:text="We need to register your phone number before getting started"
+        android:textSize="17sp"
+        android:textStyle="italic" />
+
+    <LinearLayout
+        android:id="@+id/phoneeditext_layout"
+        android:layout_width="@dimen/_270sdp"
+        android:layout_height="wrap_content"
+        android:background="@drawable/edittext_bg"
+        android:elevation="@dimen/_4sdp"
+        android:orientation="horizontal"
+        android:padding="5dp">
+
+        <ImageView
+            android:layout_width="@dimen/_20sdp"
+            android:layout_height="@dimen/_20sdp"
+            android:layout_gravity="center_vertical"
+            android:src="@drawable/mobile_pic" />
+
+        <EditText
+            android:id="@+id/phoneveri_edittext"
+            android:layout_width="0dp"
+            android:layout_height="@dimen/_38sdp"
+            android:layout_weight="1"
+            android:background="@android:color/transparent"
+            android:gravity="center"
+            android:hint="Enter phone number with country code (+1234...)"
+            android:inputType="phone"
+            android:padding="10dp" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/phonee_code_editext_layout"
+        android:layout_width="@dimen/_270sdp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/_8sdp"
+        android:background="@drawable/edittext_bg"
+        android:elevation="@dimen/_4sdp"
+        android:orientation="horizontal"
+        android:padding="@dimen/_5sdp"
+        android:visibility="gone">
+
+        <ImageView
+            android:layout_width="@dimen/_20sdp"
+            android:layout_height="@dimen/_20sdp"
+            android:layout_gravity="center_vertical"
+            android:src="@drawable/lock_phoneveri_code" />
+
+        <EditText
+            android:id="@+id/code_phoneveri_edittext"
+            android:layout_width="0dp"
+            android:layout_height="@dimen/_35sdp"
+            android:layout_weight="1"
+            android:background="@android:color/transparent"
+            android:gravity="center"
+            android:hint=" Enter your OTP (code)"
+            android:inputType="number"
+            android:padding="10dp"
+            android:textSize="20sp" />
+    </LinearLayout>
+
+    <Button
+        android:id="@+id/send_code_btn"
+        android:layout_width="@dimen/_260sdp"
+        android:layout_height="@dimen/_48sdp"
+        android:backgroundTint="#7A3F99"
+        android:fontFamily="@font/aclonica"
+        android:padding="1dp"
+        android:soundEffectsEnabled="true"
+        android:text="Send the Code"
+        android:textSize="24sp"
+        app:cornerRadius="@dimen/_4sdp" />
+
+    <Button
+        android:id="@+id/verify_phoneno_btn"
+        android:layout_width="@dimen/_260sdp"
+        android:layout_height="@dimen/_48sdp"
+        android:backgroundTint="#7A3F99"
+        android:fontFamily="@font/aclonica"
+        android:padding="1dp"
+        android:soundEffectsEnabled="true"
+        android:text="Verify Phone number"
+        android:textSize="24sp"
+        android:visibility="gone"
+        app:cornerRadius="@dimen/_5sdp" />
+
+    <LinearLayout
+        android:id="@+id/send_again_layout"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:visibility="gone">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Edit Phone number?"
+            android:textSize="19sp" />
+
+        <TextView
+            android:id="@+id/textview_send_again"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginLeft="@dimen/_30sdp"
+            android:fontFamily="@font/aclonica"
+            android:text="Send Again"
+            android:textSize="20sp" />
+    </LinearLayout>
+
+</LinearLayout>
+

@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="black">#FF000000</color>
+    <color name="heading_purple">#C53DDC</color>
+    <color name="custom_purple">#C53DDC</color>
+    <color name="white">#FFFFFFFF</color>
+    <color name="active_color">#FF5733</color> <!-- Replace with your desired color -->
+    <color name="inactive_color">#B0B0B0</color>  <!-- Example inactive color -->
+
+
+        <color name="purple">#800080</color> <!-- Purple color -->
+    <color name="transparent">#00000000</color> <!-- Transparent color -->
+
+    <color name="teal_700">#018786</color>
+    <color name="gray">#808080</color>
+
+    <!-- Your existing colors here -->
+    <color name="your_primary_color">#FF0000</color>   <!-- Example Red -->
+    <color name="your_accent_color">#0000FF</color>     <!-- Example Blue -->
+    <color name="your_text_color">#333333</color>       <!-- Example Dark Grey -->
+    <color name="your_dialog_background">#FFFFFF</color> <!-- Example White -->
+
+    <color name="colorPrimary">#6200EE</color>
+    <color name="colorPrimaryDark">#3700B3</color>
+    <color name="colorAccent">#03DAC5</color>
+    <color name="colorAccenttt">#F0CDF6</color> <!-- <<< Look for this line -->
+
+
+
+
+</resources>

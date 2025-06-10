@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/main"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:padding="11dp"
+    tools:context=".PhoneLogin">
+
+    <ImageView
+        android:id="@+id/pone_veri_logo"
+        android:layout_width="262dp"
+        android:layout_height="269dp"
+        android:src="@drawable/phoneveri_logo"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.496"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintVertical_bias="0.106" />
+
+    <Button
+        android:id="@+id/signup_btn"
+        android:layout_width="371dp"
+        android:layout_height="59dp"
+        android:backgroundTint="#7A3F99"
+        android:fontFamily="@font/aclonica"
+        android:padding="1dp"
+        android:soundEffectsEnabled="true"
+        android:text="Phone Verification"
+        android:textSize="24sp"
+        app:cornerRadius="1dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/pone_veri_logo"
+        app:layout_constraintVertical_bias="0.046" />
+
+    <TextView
+        android:id="@+id/textView11"
+        android:layout_width="371dp"
+        android:layout_height="50dp"
+        android:text="We need to register your phone number before getting started"
+        android:textSize="20sp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="1.0"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/signup_btn"
+        app:layout_constraintVertical_bias="0.042" />
+
+    <LinearLayout
+        android:id="@+id/phonee_code_ditext_layout"
+        android:layout_width="366dp"
+        android:layout_height="wrap_content"
+        android:background="@drawable/edittext_bg"
+        android:elevation="4dp"
+        android:orientation="horizontal"
+        android:padding="5dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.391"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/textView11"
+        app:layout_constraintVertical_bias="0.095">
+
+        <ImageView
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:layout_gravity="center_vertical"
+            android:src="@drawable/lock_phoneveri_code" />
+
+        <EditText
+            android:id="@+id/code_phoneveri_edittext"
+            android:layout_width="0dp"
+            android:layout_height="48dp"
+            android:layout_weight="1"
+            android:background="@android:color/transparent"
+            android:hint="   __ __ __ __ __ __"
+            android:inputType="textEmailAddress"
+            android:padding="10dp"
+            android:textSize="29sp" />
+    </LinearLayout>
+
+    <Button
+        android:id="@+id/verify_phoneno_btn"
+        android:layout_width="371dp"
+        android:layout_height="59dp"
+        android:layout_marginBottom="100dp"
+        android:backgroundTint="#7A3F99"
+        android:fontFamily="@font/aclonica"
+        android:padding="1dp"
+        android:soundEffectsEnabled="true"
+        android:text="Verify Phone number"
+        android:textSize="24sp"
+        app:cornerRadius="1dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/phonee_code_ditext_layout"
+        app:layout_constraintVertical_bias="0.119" />
+
+
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.333"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/verify_phoneno_btn"
+        app:layout_constraintVertical_bias="0.108">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Edit Phone number?"
+            android:textSize="19sp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginLeft="50dp"
+            android:fontFamily="@font/aclonica"
+            android:text="Send Again"
+            android:textSize="20sp" />
+    </LinearLayout>
+
+
+</androidx.constraintlayout.widget.ConstraintLayout>

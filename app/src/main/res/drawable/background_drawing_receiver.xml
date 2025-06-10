@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <corners android:radius="8dp" /> <!-- Adjust radius to match your receiver bubble shape -->
+    <solid android:color="#D19D69" /> <!-- A shade of green -->
+    <!-- Or you can use a color from your colors.xml -->
+    <!-- <solid android:color="@color/green_bubble_receiver"/> -->
+</shape>

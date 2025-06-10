@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    tools:context=".navigation_fragments.GroupFragment">
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/group_recycler_view"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:padding="10dp"/>
+
+
+
+
+
+<!--&lt;!&ndash;    different search view&ndash;&gt;-->
+<!--    <androidx.appcompat.widget.SearchView-->
+<!--        android:layout_width="match_parent"-->
+<!--        android:layout_height="wrap_content"-->
+<!--        app:queryHint="hello name"-->
+<!--        />-->
+
+<!--    <com.google.android.material.search.SearchBar-->
+<!--        android:layout_width="match_parent"-->
+<!--        android:layout_height="wrap_content"-->
+<!--        android:hint="hey, you!"-->
+<!--        android:layout_marginTop="@dimen/_60sdp"-->
+<!--        />-->
+
+
+    <TextView
+        android:id="@+id/noChatsText"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="No Groups yet"
+        android:textSize="25sp"
+        android:textColor="#89878A"
+        android:textStyle="italic"
+        android:gravity="center"
+        android:visibility="gone"
+        android:layout_gravity="center"/>
+
+    <!-- Floating Action Button -->
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/fab_create_group"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|end"
+        android:layout_margin="16dp"
+        android:src="@drawable/addsvvgicn"
+        android:contentDescription="Create Group"
+        android:backgroundTint="#C75ADB"/>
+
+</FrameLayout>

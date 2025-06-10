@@ -1,0 +1,340 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    tools:context=".drawingboard_chatgroup.YOUR_DRAWING_ACTIVITY_CLASS"
+    tools:ignore="ExtraText">
+
+    <!-- Toolbar for Title and Back Button -->
+    <androidx.appcompat.widget.Toolbar
+        android:id="@+id/drawing_toolbar"
+        android:layout_width="match_parent"
+        android:layout_height="90dp"
+        android:background="?attr/colorPrimary"
+        android:elevation="4dp"
+        android:theme="@style/ThemeOverlay.AppCompat.ActionBar"
+        app:popupTheme="@style/ThemeOverlay.AppCompat.Light">
+
+        <TextView
+            android:id="@+id/toolbar_title"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:text="Shared Drawing"
+        android:textColor="@android:color/white"
+        android:textSize="18sp"
+        android:textStyle="bold"/>
+
+    </androidx.appcompat.widget.Toolbar>
+
+
+    <!-- Top Section: Active Users List -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:background="@android:color/white"
+    android:padding="8dp"
+    android:elevation="2dp">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Participants:"
+        android:textSize="12sp"
+        android:textColor="@android:color/black"
+        android:textStyle="bold"/>
+
+    <!-- RecyclerView for active users (Horizontal Scrollable List) -->
+    <!-- layoutManager="androidx.recyclerview.widget.LinearLayoutManager" and orientation="horizontal"
+         will be set in the DrawingActivity Java code. -->
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/active_users_recycler_view"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        tools:listitem="@layout/item_active_user_drawingclass"/> <!-- You MUST have item_active_user.xml layout -->
+
+</LinearLayout>
+
+
+    <!-- Middle Section: Drawing Area Container -->
+    <!-- ScrollView allows vertical scrolling. The DrawingView or its inner container
+         will need to handle Zoom (pinch/pan) and potentially expand its size downwards
+         if drawing goes beyond the initial bounds (for "unlimited page"). -->
+<ScrollView
+android:id="@+id/drawing_scroll_view"
+android:layout_width="match_parent"
+android:layout_height="0dp"
+android:layout_weight="1"
+    android:background="@android:color/white">
+
+
+    <!-- Container for DrawingView inside ScrollView -->
+    <!-- This FrameLayout holds the DrawingView and potentially overlays like cursors -->
+    <!-- Use wrap_content height so it expands with the DrawingView if it grows -->
+<FrameLayout
+android:id="@+id/drawing_view_container"
+android:layout_width="match_parent"
+android:layout_height="wrap_content"
+    android:layout_gravity="top|center_horizontal" >
+
+    <!-- Your Custom DrawingView -->
+    <!-- The height can initially be fixed, but the DrawingView or its parent
+         might need to handle dynamic resizing based on drawing bounds for "unlimited".
+         Let's start with a reasonable default height. -->
+    <com.sana.circleup.drawingboard_chatgroup.DrawingView
+    android:id="@+id/drawing_board"
+    android:layout_width="match_parent"
+    android:layout_height="700dp"
+    />
+
+
+
+    <!-- Loading Indicator Overlay -->
+<TextView
+android:id="@+id/drawing_loading_indicator"
+android:layout_width="wrap_content"
+android:layout_height="wrap_content"
+android:layout_gravity="center"
+android:text="Loading drawing..."
+android:textColor="@android:color/black"
+android:textSize="18sp"
+android:padding="16dp"
+android:background="#AAFFFFFF"
+    android:visibility="gone"/>
+
+    <!-- Session Ended Indicator Overlay -->
+<TextView
+android:id="@+id/session_ended_indicator"
+android:layout_width="wrap_content"
+android:layout_height="wrap_content"
+android:layout_gravity="center"
+android:text="Session Ended"
+android:textColor="@android:color/holo_red_dark"
+android:textSize="24sp"
+android:textStyle="bold"
+android:padding="16dp"
+android:background="#AAFFFFFF"
+    android:visibility="gone"/>
+
+    <!-- Add Overlay View for Cursors here if implementing profile pic cursor -->
+    <!-- <com.sana.circleup.drawingboard_chatgroup.CursorOverlayView -->
+    <!--    android:id="@+id/cursor_overlay" -->
+    <!--    android:layout_width="match_parent" -->
+    <!--    android:layout_height="match_parent" -->
+    <!--    android:visibility="visible"/> -->
+
+
+</FrameLayout>
+</ScrollView>
+
+    <!-- Bottom Section: Drawing Tools and Actions -->
+<LinearLayout
+android:id="@+id/drawing_tools_layout"
+android:layout_width="match_parent"
+android:layout_height="wrap_content"
+android:orientation="vertical"
+    android:gravity="center_horizontal"
+    android:padding="8dp"
+    android:background="@android:color/white"
+    android:elevation="8dp">
+
+    <!-- Row 1: Colors -->
+<LinearLayout
+android:layout_width="wrap_content"
+android:layout_height="wrap_content"
+android:orientation="horizontal"
+android:gravity="center"
+android:layout_marginBottom="4dp">
+
+<TextView
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:text="Color:"
+    android:textSize="12sp"
+    android:textColor="@android:color/black"
+    android:layout_marginEnd="8dp"/>
+
+    <Button android:id="@+id/btn_color_black" android:layout_width="35dp" android:layout_height="35dp" android:layout_margin="4dp" android:backgroundTint="#121111"/>
+    <Button android:id="@+id/btn_color_red" android:layout_width="35dp" android:layout_height="35dp" android:layout_margin="4dp" android:backgroundTint="#F63224"/>
+    <Button android:id="@+id/btn_color_blue" android:layout_width="35dp" android:layout_height="35dp" android:layout_margin="4dp" android:backgroundTint="#3F51B5"/>
+    <Button android:id="@+id/btn_color_green" android:layout_width="35dp" android:layout_height="35dp" android:layout_margin="4dp" android:backgroundTint="#5B9D10"/>
+    <Button
+        android:id="@+id/btn_color_yellow" android:layout_width="35dp"
+        android:layout_margin="4dp"
+        android:backgroundTint="#FFEB3B"
+        android:layout_height="35dp"/>
+    <Button android:id="@+id/btn_color_PURPLE" android:layout_width="35dp" android:layout_height="35dp" android:layout_margin="4dp"
+        android:backgroundTint="#9C27B0"/>
+
+</LinearLayout>
+
+    <!-- Row 2: Stroke Size & Eraser -->
+<LinearLayout
+android:layout_width="wrap_content"
+android:layout_height="wrap_content"
+android:orientation="horizontal"
+android:gravity="center"
+android:layout_marginBottom="8dp">
+
+<TextView
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:text="Size:"
+    android:textSize="12sp"
+    android:textColor="@android:color/black"
+    android:layout_marginEnd="8dp"/>
+
+<!-- Stroke Width Buttons (using drawables for visual size) -->
+<!-- You need to create stroke_width_indicator_small.xml, _medium.xml, _large.xml -->
+    <TextView android:id="@+id/btn_stroke_small" android:layout_width="40dp" android:layout_height="40dp"
+        android:layout_margin="4dp" android:background="@drawable/stroke_width_indicator_small"
+        android:text="S" android:gravity="center" android:textColor="@android:color/black" android:textSize="12sp"/> <!-- Use letters S, M, L -->
+    <TextView android:id="@+id/btn_stroke_medium"
+        android:layout_width="40dp" android:layout_height="40dp"
+        android:layout_margin="4dp" android:background="@drawable/stroke_width_indicator_medium"
+        android:text="M" android:gravity="center" android:textColor="@android:color/black" android:textSize="12sp"/>
+    <TextView android:id="@+id/btn_stroke_large"
+        android:layout_width="40dp" android:layout_height="40dp"
+        android:layout_margin="4dp" android:background="@drawable/stroke_width_indicator_large"
+        android:text="L" android:gravity="center" android:textColor="@android:color/black" android:textSize="12sp"/>
+
+<!-- Separator -->
+<View
+    android:layout_width="1dp"
+    android:layout_height="match_parent"
+    android:background="@android:color/darker_gray"
+    android:layout_marginStart="16dp"
+    android:layout_marginEnd="16dp"/>
+
+
+<!-- Eraser Button -->
+<TextView
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:text="Eraser:"
+    android:textSize="12sp"
+    android:textColor="@android:color/black"
+    android:layout_marginEnd="8dp"/>
+
+<ImageButton
+    android:id="@+id/btn_tool_eraser"
+    android:layout_width="20dp"
+    android:layout_height="20dp"
+    android:layout_margin="4dp"
+    android:contentDescription="Eraser"
+    android:src="@drawable/eraser" /> <!-- <<< You need an eraser icon drawable (ic_eraser.xml) -->
+<!-- Add other tools here later if needed (e.g., Text, Shapes) -->
+
+
+
+
+</LinearLayout>
+
+
+
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Scroll:"
+            android:textSize="16sp"
+            android:textColor="@android:color/black"
+            android:layout_marginEnd="8dp"/>
+
+        <TextView android:id="@+id/btn_scroll_up"
+            android:layout_width="80dp" android:layout_height="wrap_content"
+            android:layout_margin="4dp"
+            android:textSize="@dimen/_14sdp"
+            android:textStyle="bold|italic"
+            android:text="Upward"
+            android:contentDescription="Scroll Up"/> <!-- Need ic_arrow_upward drawable -->
+        <TextView android:id="@+id/btn_scroll_down"
+            android:layout_width="90dp"
+            android:textSize="@dimen/_14sdp"
+            android:textStyle="bold|italic"
+            android:layout_margin="4dp"
+            android:text="Downward"
+            android:contentDescription="Scroll Down"
+            android:layout_height="wrap_content"/> <!-- Need ic_arrow_downward drawable -->
+    </LinearLayout>
+
+
+
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Zoom:"
+            android:textSize="16sp"
+            android:textColor="@android:color/black"
+            android:layout_marginEnd="8dp"/>
+
+        <TextView android:id="@+id/btn_zoom_out"
+            android:layout_width="40dp"
+            android:layout_height="wrap_content"
+            android:layout_margin="4dp"
+            android:textStyle="bold"
+            android:textSize="@dimen/_20sdp"
+            android:text="+"
+            android:contentDescription="Zoom Out"/> <!-- Need ic_zoom_out drawable -->
+        <TextView android:id="@+id/btn_zoom_in"
+            android:layout_width="40dp"
+            android:layout_height="wrap_content"
+            android:layout_margin="4dp"
+            android:textStyle="bold"
+            android:textSize="@dimen/_29sdp"
+            android:text="-"
+            android:contentDescription="Zoom In"/> <!-- Need ic_zoom_in drawable -->
+    </LinearLayout>
+
+
+
+
+    <!-- Row 3: Initiator Actions (Clear and End Session) -->
+<LinearLayout
+android:layout_width="wrap_content"
+android:layout_height="wrap_content"
+android:orientation="horizontal"
+android:gravity="center"
+android:layout_marginTop="8dp">
+
+<!-- Clear Button (Only visible to Initiator) -->
+<Button
+    android:id="@+id/btn_clear_drawing"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:text="Clear All"
+    android:backgroundTint="@android:color/holo_orange_dark"
+android:layout_marginEnd="16dp"
+android:visibility="gone" tools:visibility="visible"/>
+
+<!-- End Session Button (Only visible to Initiator) -->
+<Button
+    android:id="@+id/btn_end_session"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:text="End Session"
+    android:backgroundTint="@android:color/holo_red_dark"
+android:visibility="gone" tools:visibility="visible"/>
+
+</LinearLayout>
+
+    </LinearLayout>
+
+</LinearLayout>
+

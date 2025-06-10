@@ -1,0 +1,146 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="@dimen/_10sdp">
+
+    <!-- Receiver's message -->
+    <LinearLayout
+        android:id="@+id/receiver_layout"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="start"
+        android:gravity="start"
+        android:orientation="horizontal">
+
+        <de.hdodenhof.circleimageview.CircleImageView
+            android:id="@+id/receiver_profile_image"
+            android:layout_width="@dimen/_40sdp"
+            android:layout_height="@dimen/_40sdp"
+            android:layout_marginEnd="@dimen/_7sdp"
+            android:src="@drawable/default_profile_img" />
+
+        <LinearLayout
+            android:layout_width="240dp"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            >
+
+            <TextView
+                android:id="@+id/receiver_message_text"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="@drawable/reciver_shape"
+                android:padding="8dp"
+                android:text="hi i am receiver"
+                android:textSize="18sp"
+                android:textColor="#000" />
+            <TextView
+                android:id="@+id/reactionTextView"
+                android:layout_width="wrap_content"
+                android:layout_height="10dp"
+                android:padding="8dp"
+                android:visibility="gone"
+                android:textSize="18sp"
+                android:textColor="#000" />
+
+            <ImageView
+                android:id="@+id/receiver_image_view"
+                android:layout_width="200dp"
+                android:layout_height="200dp"
+                android:layout_marginTop="4dp"
+                android:scaleType="centerCrop"
+                android:visibility="gone" />
+
+            <TextView
+                android:id="@+id/msg_receiver_time"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Received at: 12:30 PM"
+                android:textSize="@dimen/_7sdp"
+                android:textColor="#888888"
+                android:layout_marginTop="2dp"
+                android:paddingStart="5dp" />
+
+        </LinearLayout>
+    </LinearLayout>
+
+
+
+
+    <!-- NEW: System Message Layout -->
+    <LinearLayout
+        android:id="@+id/system_message_layout"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:gravity="center"
+    android:layout_gravity="center"
+    android:visibility="gone"
+    android:paddingVertical="@dimen/_8sdp">
+
+    <TextView
+        android:id="@+id/tv_system_message"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:padding="@dimen/_5sdp"
+    android:text="security Code Changed by user"
+    android:textSize="@dimen/_11sdp"
+    android:textStyle="bold|italic"
+    android:textColor="@color/gray"
+    android:background="@drawable/system_message_background" />
+
+</LinearLayout>
+    <!-- END NEW -->
+
+    <!-- Sender's message (Removed profile image) -->
+    <LinearLayout
+        android:id="@+id/sender_layout"
+        android:layout_width="240dp"
+        android:layout_height="wrap_content"
+        android:layout_gravity="end"
+        android:gravity="end"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/sender_message_text"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="@drawable/sender_shape"
+            android:padding="8dp"
+            android:text="hi i am sender"
+            android:textSize="18sp"
+            android:textColor="#141212" />
+
+        <ImageView
+            android:id="@+id/sender_image_view"
+            android:layout_width="200dp"
+            android:layout_height="200dp"
+            android:layout_marginTop="4dp"
+            android:scaleType="centerCrop"
+            android:visibility="gone" />
+
+        <TextView
+            android:id="@+id/msg_send_time"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Send at: 12:30 PM"
+            android:textSize="@dimen/_7sdp"
+            android:textColor="#888888"
+            android:layout_marginTop="2dp"
+            android:paddingStart="5dp" />
+
+
+        <TextView
+            android:id="@+id/msg_seen_time"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Seen at: 12:30 PM ||  UNSEEN"
+            android:textSize="@dimen/_7sdp"
+            android:textColor="#888888"
+            android:layout_marginTop="2dp"
+            android:paddingStart="5dp" />
+
+    </LinearLayout>
+
+</LinearLayout>

@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="#EFE4F7"
+    tools:context=".ChangePassphraseActivity">
+
+    <!-- Toolbar -->
+    <androidx.appcompat.widget.Toolbar
+        android:id="@+id/toolbar_change_passphrase"
+        android:layout_width="match_parent"
+        android:layout_height="?attr/actionBarSize"
+        android:background="#7A3F99"
+        app:title="Change Passphrase"
+        app:titleTextColor="@android:color/white" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:padding="16dp"
+        android:fontFamily="@font/poppins_regular"
+        android:text="Enter your current security passphrase to verify, then set a new one."
+        android:gravity="center"
+        android:textColor="#050505"
+        android:textSize="14sp"
+        android:layout_marginTop="16dp"/>
+
+    <!-- Old Passphrase Input -->
+    <com.google.android.material.textfield.TextInputLayout
+        android:id="@+id/layout_old_passphrase"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="24dp"
+        android:layout_marginEnd="24dp"
+        android:layout_marginTop="16dp"
+        app:hintEnabled="true"
+        app:hintTextColor="#7A3F99"
+        app:boxStrokeColor="#7A3F99"
+        app:startIconDrawable="@drawable/ic_password"
+        app:startIconTint="#7A3F99"
+        app:passwordToggleEnabled="true"
+        app:passwordToggleTint="#7A3F99">
+
+        <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/editTextOldPassphrase"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Current Passphrase"
+            android:inputType="textPassword"
+            android:textColor="#050505"
+            android:textSize="16sp" />
+    </com.google.android.material.textfield.TextInputLayout>
+
+    <!-- New Passphrase Input -->
+    <com.google.android.material.textfield.TextInputLayout
+        android:id="@+id/layout_new_passphrase"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="24dp"
+        android:layout_marginEnd="24dp"
+        android:layout_marginTop="16dp"
+        app:hintEnabled="true"
+        app:hintTextColor="#7A3F99"
+        app:boxStrokeColor="#7A3F99"
+        app:startIconDrawable="@drawable/ic_password"
+        app:startIconTint="#7A3F99"
+        app:passwordToggleEnabled="true"
+        app:passwordToggleTint="#7A3F99">
+
+        <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/editTextNewPassphrase"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="New Passphrase"
+            android:inputType="textPassword"
+            android:textColor="#050505"
+            android:textSize="16sp" />
+    </com.google.android.material.textfield.TextInputLayout>
+
+    <!-- Confirm New Passphrase Input -->
+    <com.google.android.material.textfield.TextInputLayout
+        android:id="@+id/layout_confirm_passphrase"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="24dp"
+        android:layout_marginEnd="24dp"
+        android:layout_marginTop="16dp"
+        app:hintEnabled="true"
+        app:hintTextColor="#7A3F99"
+        app:boxStrokeColor="#7A3F99"
+        app:startIconDrawable="@drawable/ic_password"
+        app:startIconTint="#7A3F99"
+        app:passwordToggleEnabled="true"
+        app:passwordToggleTint="#7A3F99">
+
+        <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/editTextConfirmNewPassphrase"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Confirm New Passphrase"
+            android:inputType="textPassword"
+            android:textColor="#050505"
+            android:textSize="16sp" />
+    </com.google.android.material.textfield.TextInputLayout>
+
+    <Button
+        android:id="@+id/buttonChangePassphrase"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="24dp"
+        android:layout_marginEnd="24dp"
+        android:layout_marginTop="32dp"
+        android:text="Change Passphrase"
+        android:textColor="@android:color/white"
+        android:backgroundTint="#7A3F99"/>
+
+    <ProgressBar
+        android:id="@+id/progressBarChangePassphrase"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginTop="16dp"
+        android:visibility="gone" />
+
+</LinearLayout>
