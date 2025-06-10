@@ -13,3 +13,5 @@
 .externalNativeBuild
 .cxx
 local.properties
+# Ignore Google Cloud Service Account Key
+app/src/main/assets/serviceAccountKey.json

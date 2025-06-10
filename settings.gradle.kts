@@ -25,4 +25,3 @@ dependencyResolutionManagement {
 
 rootProject.name = "CircleUp"
 include(":app")
-include(":adminpanel")
