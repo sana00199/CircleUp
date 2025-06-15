@@ -308,16 +308,14 @@ public class Login extends AppCompatActivity implements GoogleSignInHelper.Googl
                         if (user != null) {
                             Log.d(TAG, "Email/Password Auth Success. User UID: " + user.getUid());
 
-
-
-
-
                             // --- NEW: Check if email is verified ---
                             if (user.isEmailVerified()) {
                                 Log.d(TAG, "Email is verified for user: " + user.getUid() + ".");
 
                                 // --- NEW: Check if user profile is complete (basic data like username, and keys) ---
-                                checkProfileCompletionAndProceed(user); // Call the new helper method
+//                                checkProfileCompletionAndProceed(user);
+                                checkIsBlockedAndProceed(user);
+                                // Call the new helper method
                                 // --- END NEW ---
 
 
@@ -329,22 +327,6 @@ public class Login extends AppCompatActivity implements GoogleSignInHelper.Googl
                                 // Stay on login screen.
                             }
                             // --- END NEW ---
-
-
-
-//                            // Save login method preference
-//                            saveLoginMethodPreference(user); // Save 'email' method
-//
-//                            // ### YAHAN CALL KAREIN FOR EMAIL/PASSWORD LOGIN SUCCESS (EXISTING USER) ###
-//                            // User successfully authenticated via email/password. Set OneSignal External User ID.
-//                            Log.d(TAG, "Email/Password login successful for user: " + user.getUid() + ". Setting OneSignal External User ID.");
-//                            // setOneSignalExternalUserId(user.getUid()); // Call your OneSignal method here
-//
-//
-//                            // --- Proceed to fetch user data and handle encryption keys ---
-//                            // Pass the FirebaseUser object here
-//                            fetchUserDataAndHandleKeys(user);
-//                            // --- END ---
 
                         } else {
                             // Authentication successful but Firebase user object is null (should not happen often, but handle defensively)
@@ -370,11 +352,6 @@ public class Login extends AppCompatActivity implements GoogleSignInHelper.Googl
                 });
     }
     // --- End Email/Password Login ---
-
-
-
-
-
 
 
 
@@ -1242,70 +1219,6 @@ public class Login extends AppCompatActivity implements GoogleSignInHelper.Googl
     // --- END NEW Helper Method ---
 
 
-
-// ... (rest of Login.java) ...
-
-    // --- Implement GoogleSignInListener Callbacks ---
-//    @Override
-//    public void onGoogleAuthComplete(FirebaseUser user, boolean isNewUser) {
-//        // This callback is triggered by GoogleSignInHelper after successfully authenticating with Firebase via Google,
-//        // and after checking if the user exists in the /Users database node.
-//        // isNewUser is true IF the Google flow started from Signup AND the user didn't exist in DB.
-//
-//        Log.d(TAG, "onGoogleAuthComplete callback received in Login. User: " + (user != null ? user.getUid() : "null") + ", isNewUser: " + isNewUser);
-//        progressDialog.dismiss(); // Dismiss any Google sign-in progress dialog
-//
-//        if (user != null) {
-//            if (isNewUser) {
-//                // It's a genuinely new user coming from Google Sign-Up.
-//                // Navigate to the profile setup screen to collect username/status and MOST IMPORTANTLY, set up the passkey/crypto keys.
-//                Log.d(TAG, "Google Auth Complete (Login): New user confirmed. Navigating to Setting_profile."); // Corrected log context
-//                Intent intent = new Intent(Login.this, Setting_profile.class); // Ensure Setting_profile exists
-//                intent.putExtra("isNewUser", true); // Flag for Setting_profile
-//                // Clear the task stack so user cannot go back to Signup/Login using the back button
-//                intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
-//                startActivity(intent);
-//                finish(); // Finish Login activity
-//            } else {
-//                // This Google account already exists in our Firebase DB.
-//                // This is the standard flow for an *existing* Google user logging in via the Login screen.
-//                Log.d(TAG, "Google Auth Complete (Login): Existing user login for UID: " + user.getUid() + ". Fetching user data from DB."); // Corrected log context
-//
-//                // ### YAHAN CALL KAREIN FOR EXISTING GOOGLE LOGIN SUCCESS ###
-//                // Existing Google user authenticated. Set OneSignal External User ID.
-//                Log.d(TAG, "Existing Google login successful for user: " + user.getUid() + ". Setting OneSignal External User ID.");
-//                // setOneSignalExternalUserId(user.getUid()); // Call your OneSignal method here
-//
-//                // --- Capture RememberMe state *before* fetching user data ---
-//                // We need this state in the fetchUserDataAndHandleKeys method.
-//                isRememberMeCheckedOnLoginAttempt = rememberMeCheckbox.isChecked(); // Capture state from UI
-//                Log.d(TAG, "Google login complete. RememberMe checked on attempt: " + isRememberMeCheckedOnLoginAttempt);
-//                // --- END Capture ---
-//
-//                // Save login method preference
-//                saveLoginMethodPreference(user); // Save 'google' method
-//
-//                // Proceed to fetch user data and handle encryption keys for existing user, PASS USER OBJECT
-//                fetchUserDataAndHandleKeys(user); // Fetch user data and handle keys
-//            }
-//        } else {
-//            // Should not happen if task is successful, but defensive check
-//            Log.e(TAG, "onGoogleAuthComplete callback received null user unexpectedly. Logging out.");
-//            progressDialog.dismiss(); // Ensure dismiss
-//            Toast.makeText(Login.this, "Google Sign-in failed: User data is null. Please log in again.", Toast.LENGTH_SHORT).show();
-//            auth.signOut(); // Log out from Firebase Auth
-//            YourKeyManager.getInstance().clearKeys(); // Clear any potential keys from memory
-//            SecureKeyStorageUtil.clearAllSecureKeys(Login.this, null); // Clear local keys
-//            sharedPreferences.edit().putBoolean(PREF_REMEMBER_ME, false).apply(); // Ensure RememberMe preference is false
-//            Log.d(TAG, "RememberMe preference set to FALSE on Google auth null user.");
-//            // Stay on login screen
-//        }
-//    }
-
-
-
-
-
     // --- Modified GoogleSignInListener Callbacks ---
     @Override
     public void onGoogleAuthComplete(FirebaseUser user, boolean isNewUserFromHelper) { // Renamed isNewUserFromHelper for clarity
@@ -1334,7 +1247,8 @@ public class Login extends AppCompatActivity implements GoogleSignInHelper.Googl
                     saveLoginMethodPreference(user); // Save 'google' method
                     isRememberMeCheckedOnLoginAttempt = rememberMeCheckbox.isChecked(); // Capture state
                     // Check profile completion before fetching keys/navigating
-                    checkProfileCompletionAndProceed(user); // Call the helper method
+                    checkIsBlockedAndProceed(user);
+//                    checkProfileCompletionAndProceed(user); // Call the helper method
                 }
             } else {
                 // This case is rare for Google Auth but handle defensively
@@ -1357,6 +1271,84 @@ public class Login extends AppCompatActivity implements GoogleSignInHelper.Googl
     }
 
 
+
+
+    private void checkIsBlockedAndProceed(FirebaseUser authenticatedUser) {
+        String userId = authenticatedUser.getUid();
+        Log.d(TAG, "checkIsBlockedAndProceed: Checking isBlocked status for user: " + userId);
+        progressDialog.setMessage("Verifying account status..."); // Update progress dialog message
+
+        // Get a reference to the user's node in the main app's Users database
+        DatabaseReference userStatusRef = FirebaseDatabase.getInstance().getReference().child("Users").child(userId);
+
+        userStatusRef.addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
+                // This callback runs on the main thread
+                // Progress dialog will be dismissed later in the flow (e.g., in fetchUserDataAndHandleKeys or checkProfileCompletionAndProceed)
+
+                if (snapshot.exists() && snapshot.hasChild("isBlocked")) {
+                    Boolean isBlockedBoolean = snapshot.child("isBlocked").getValue(Boolean.class);
+                    boolean isBlocked = isBlockedBoolean != null && isBlockedBoolean; // Safely get boolean value
+
+                    if (isBlocked) {
+                        // User is blocked! Prevent login.
+                        Log.d(TAG, "checkIsBlockedAndProceed: Login failed: User account " + userId + " is blocked.");
+                        // --- Perform Logout and Stay on Login Screen ---
+                        progressDialog.dismiss(); // Dismiss the dialog
+                        auth.signOut(); // Sign out from Firebase Auth again just to be safe
+                        Toast.makeText(Login.this, "Your account has been disabled by an administrator.Contact at circleup0719@gmail.com", Toast.LENGTH_LONG).show();
+                        // Clear RememberMe preference on blocked login attempt
+                        sharedPreferences.edit().putBoolean(PREF_REMEMBER_ME, false).apply();
+                        Log.d(TAG, "checkIsBlockedAndProceed: RememberMe preference set to FALSE on blocked login attempt.");
+                        // Stay on the Login screen. Do NOT navigate away.
+                        // The Activity is already Login.
+                        // Ensure any key data related to this user is cleared from memory/local storage if needed,
+                        // although signing out should prevent most access.
+                        YourKeyManager.getInstance().clearKeys(); // Clear any potential keys from memory
+                        SecureKeyStorageUtil.clearAllSecureKeys(Login.this, userId); // Clear local keys
+                        // ----------------------------------------------
+                    } else {
+                        // User is NOT blocked. Proceed with the rest of the login flow.
+                        Log.d(TAG, "checkIsBlockedAndProceed: User account " + userId + " is not blocked. Proceeding with profile/key handling.");
+
+                        // *** Your existing code to proceed with login flow goes here ***
+                        // Based on your provided code, this is likely the call to checkProfileCompletionAndProceed.
+                        checkProfileCompletionAndProceed(authenticatedUser); // Call the next step in your login flow
+                        // ***********************************************************
+                    }
+                } else {
+                    // isBlocked field is missing or user node doesn't exist (shouldn't happen if registration/profile setup works correctly)
+                    // This indicates incomplete or corrupt user data. Treat as an error requiring intervention.
+                    Log.e(TAG, "checkIsBlockedAndProceed: Login failed: 'isBlocked' field missing or user data incomplete for UID: " + userId + ".");
+                    progressDialog.dismiss(); // Dismiss the dialog
+                    auth.signOut(); // Sign out from Firebase Auth
+                    Toast.makeText(Login.this, "Could not verify account status. Please contact support.", Toast.LENGTH_LONG).show();
+                    // Clear state and stay on login
+                    YourKeyManager.getInstance().clearKeys();
+                    SecureKeyStorageUtil.clearAllSecureKeys(Login.this, userId);
+                    sharedPreferences.edit().putBoolean(PREF_REMEMBER_ME, false).apply();
+                    Log.d(TAG, "checkIsBlockedAndProceed: RememberMe preference set to FALSE on account status verification failure.");
+                    // Stay on the Login screen.
+                }
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) {
+                // Firebase database read failed (e.g., network error, security rules denied)
+                Log.e(TAG, "checkIsBlockedAndProceed: Firebase DB error checking isBlocked status for UID: " + userId, error.toException());
+                progressDialog.dismiss(); // Dismiss the dialog
+                auth.signOut(); // Sign out the user from Auth because we couldn't verify status
+                Toast.makeText(Login.this, "Network error. Failed to verify account status.", Toast.LENGTH_LONG).show();
+                // Clear state and stay on login
+                YourKeyManager.getInstance().clearKeys();
+                SecureKeyStorageUtil.clearAllSecureKeys(Login.this, userId);
+                sharedPreferences.edit().putBoolean(PREF_REMEMBER_ME, false).apply();
+                Log.d(TAG, "checkIsBlockedAndProceed: RememberMe preference set to FALSE on DB read failure.");
+                // Stay on the Login screen.
+            }
+        });
+    }
 
     @Override
     public void onGoogleAuthFailed(Exception e) {
@@ -1457,83 +1449,194 @@ public class Login extends AppCompatActivity implements GoogleSignInHelper.Googl
 
     // This method is called after login/key handling to check user role and navigate
     // Now accepts FirebaseUser object
-    private void checkUserRoleAndNavigate(FirebaseUser authenticatedUser) {
-        String userId = authenticatedUser.getUid(); // Get UID from the passed object
-        Log.d(TAG, "checkUserRoleAndNavigate called for user: " + userId);
-
-        // Check if Firebase Auth user is present.
-        // Use the passed authenticatedUser object for the check.
-        if (authenticatedUser == null) { // Check the passed object
-            // This state is handled by navigateToMainActivity before calling this.
-            // If we reach here with null user, something went very wrong.
-            Log.e(TAG, "checkUserRoleAndNavigate: CRITICAL ERROR! Firebase Auth user missing unexpectedly during role check for UID: " + userId + ". Forcing re-login.");
-            Toast.makeText(this, "Authentication state missing. Please log in again.", Toast.LENGTH_LONG).show();
-            // Logging out and clearing keys is important before redirecting
-            auth.signOut(); // Use global instance
-            YourKeyManager.getInstance().clearKeys();
-            SecureKeyStorageUtil.clearAllSecureKeys(this, userId);
-            sharedPreferences.edit().putBoolean(PREF_REMEMBER_ME, false).apply();
-            Log.d(TAG, "RememberMe preference set to FALSE on critical navigation error.");
-            navigateToLoginScreen();
-            return; // Stop processing
-        }
-
-        DatabaseReference userRef = FirebaseDatabase.getInstance().getReference("Users").child(userId);
-
-        userRef.get().addOnCompleteListener(task -> {
-            progressDialog.dismiss(); // Dismiss dialog before potentially finishing activity
-
-            if (task.isSuccessful() && task.getResult().exists()) {
-                DataSnapshot snapshot = task.getResult();
-                String role = snapshot.child("role").getValue(String.class); // Assuming 'role' field exists
-
-                if (role != null && !role.isEmpty()) {
-                    Log.d(TAG, "checkUserRoleAndNavigate: User role found: " + role + " for UID: " + userId);
-                    if (role.equals("admin")) {
-                        Log.d(TAG, "checkUserRoleAndNavigate: User is Admin. Navigating to Admin Dashboard.");
-//                        Intent intent = new Intent(Login.this, AdminDashboard.class); // Or AdminSplashScreen
+//    private void checkUserRoleAndNavigate(FirebaseUser authenticatedUser) {
+//        String userId = authenticatedUser.getUid(); // Get UID from the passed object
+//        Log.d(TAG, "checkUserRoleAndNavigate called for user: " + userId);
+//
+//        // Check if Firebase Auth user is present.
+//        // Use the passed authenticatedUser object for the check.
+//        if (authenticatedUser == null) { // Check the passed object
+//            // This state is handled by navigateToMainActivity before calling this.
+//            // If we reach here with null user, something went very wrong.
+//            Log.e(TAG, "checkUserRoleAndNavigate: CRITICAL ERROR! Firebase Auth user missing unexpectedly during role check for UID: " + userId + ". Forcing re-login.");
+//            Toast.makeText(this, "Authentication state missing. Please log in again.", Toast.LENGTH_LONG).show();
+//            // Logging out and clearing keys is important before redirecting
+//            auth.signOut(); // Use global instance
+//            YourKeyManager.getInstance().clearKeys();
+//            SecureKeyStorageUtil.clearAllSecureKeys(this, userId);
+//            sharedPreferences.edit().putBoolean(PREF_REMEMBER_ME, false).apply();
+//            Log.d(TAG, "RememberMe preference set to FALSE on critical navigation error.");
+//            navigateToLoginScreen();
+//            return; // Stop processing
+//        }
+//
+//        DatabaseReference userRef = FirebaseDatabase.getInstance().getReference("Users").child(userId);
+//
+//        userRef.get().addOnCompleteListener(task -> {
+//            // Use the member dialog declared in MainActivity
+//            if (progressDialog != null && progressDialog.isShowing()) {
+//                progressDialog.dismiss();
+//            }
+//            if (task.isSuccessful() && task.getResult().exists()) {
+//                DataSnapshot snapshot = task.getResult();
+//                String role = snapshot.child("role").getValue(String.class); // Assuming 'role' field exists
+//
+//                if (role != null && !role.isEmpty()) {
+//                    Log.d(TAG, "checkUserRoleAndNavigate: User role found: " + role + " for UID: " + userId);
+//                    if (role.equals("admin")) {
+//                        Log.d(TAG, "checkUserRoleAndNavigate: User is Admin. Navigating to Admin Dashboard.");
+////                        Intent intent = new Intent(Login.this, AdminDashboard.class); // Or AdminSplashScreen
+////                        intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
+////                        startActivity(intent);
+//
+//                        Toast.makeText(this, "this is not admin apk", Toast.LENGTH_SHORT).show();
+//                    } else { // Role is user or something else
+//                        Log.d(TAG, "checkUserRoleAndNavigate: User is not Admin. Navigating to Main Activity.");
+//                        Intent intent = new Intent(Login.this, MainActivity.class);
 //                        intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
 //                        startActivity(intent);
-
-                        Toast.makeText(this, "this is not admin apk", Toast.LENGTH_SHORT).show();
-                    } else { // Role is user or something else
-                        Log.d(TAG, "checkUserRoleAndNavigate: User is not Admin. Navigating to Main Activity.");
-                        Intent intent = new Intent(Login.this, MainActivity.class);
-                        intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
-                        startActivity(intent);
-                    }
-                    finish(); // Finish Login activity after navigation
-                    Log.d(TAG, "checkUserRoleAndNavigate: Login Activity finished after successful navigation.");
-                } else {
-                    // Role is missing - Critical error for a successfully logged-in user
-                    Log.e(TAG, "checkUserRoleAndNavigate: User role not found for UID: " + userId + ". Logging out.");
-                    Toast.makeText(Login.this, "User role data missing. Please contact support. Logging out.", Toast.LENGTH_LONG).show();
-                    auth.signOut(); // Use global instance
-                    YourKeyManager.getInstance().clearKeys();
-                    SecureKeyStorageUtil.clearAllSecureKeys(this, userId);
-                    sharedPreferences.edit().putBoolean(PREF_REMEMBER_ME, false).apply();
-                    Log.d(TAG, "RememberMe preference set to FALSE on missing role.");
-                    navigateToLoginScreen(); // Redirect to Login
-                }
-            } else {
-                // User data not found in DB - Critical error
-                Log.e(TAG, "checkUserRoleAndNavigate: User data not found in DB for UID: " + userId + ". Logging out.");
-                Toast.makeText(Login.this, "User data not found! Please contact support. Logging out.", Toast.LENGTH_LONG).show();
-                auth.signOut(); // Use global instance
-                YourKeyManager.getInstance().clearKeys();
-                SecureKeyStorageUtil.clearAllSecureKeys(this, userId);
-                sharedPreferences.edit().putBoolean(PREF_REMEMBER_ME, false).apply();
-                Log.d(TAG, "RememberMe preference set to FALSE on user data not found.");
-                navigateToLoginScreen(); // Redirect to Login
-            }
-        });
-    }
+//                    }
+//                    finish(); // Finish Login activity after navigation
+//                    Log.d(TAG, "checkUserRoleAndNavigate: Login Activity finished after successful navigation.");
+//                } else {
+//                    // Role is missing - Critical error for a successfully logged-in user
+//                    Log.e(TAG, "checkUserRoleAndNavigate: User role not found for UID: " + userId + ". Logging out.");
+//                    Toast.makeText(Login.this, "User role data missing. Please contact support. Logging out.", Toast.LENGTH_LONG).show();
+//                    auth.signOut(); // Use global instance
+//                    YourKeyManager.getInstance().clearKeys();
+//                    SecureKeyStorageUtil.clearAllSecureKeys(this, userId);
+//                    sharedPreferences.edit().putBoolean(PREF_REMEMBER_ME, false).apply();
+//                    Log.d(TAG, "RememberMe preference set to FALSE on missing role.");
+//                    navigateToLoginScreen(); // Redirect to Login
+//                }
+//            } else {
+//                // User data not found in DB - Critical error
+//                Log.e(TAG, "checkUserRoleAndNavigate: User data not found in DB for UID: " + userId + ". Logging out.");
+//                Toast.makeText(Login.this, "User data not found! Please contact support. Logging out.", Toast.LENGTH_LONG).show();
+//                auth.signOut(); // Use global instance
+//                YourKeyManager.getInstance().clearKeys();
+//                SecureKeyStorageUtil.clearAllSecureKeys(this, userId);
+//                sharedPreferences.edit().putBoolean(PREF_REMEMBER_ME, false).apply();
+//                Log.d(TAG, "RememberMe preference set to FALSE on user data not found.");
+//                navigateToLoginScreen(); // Redirect to Login
+//            }
+//        });
+//    }
 
     // Assuming you have a method like this somewhere in your OneSignal integration
 
 
 
     // --- Add onDestroy to shut down the ExecutorService ---
+
+
+
+
+// Inside Login.java class:
+
+// This method is called after login/key handling to check user role and navigate
+// Now accepts FirebaseUser object
+private void checkUserRoleAndNavigate(FirebaseUser authenticatedUser) {
+    String userId = authenticatedUser.getUid(); // Get UID from the passed object
+    Log.d(TAG, "checkUserRoleAndNavigate called for user: " + userId);
+
+    // Check if Firebase Auth user is present.
+    // Use the passed authenticatedUser object for the check.
+    if (authenticatedUser == null) { // Check the passed object
+        // This state is handled by navigateToMainActivity before calling this.
+        // If we reach here with null user, something went very wrong.
+        Log.e(TAG, "checkUserRoleAndNavigate: CRITICAL ERROR! Firebase Auth user missing unexpectedly during role check for UID: " + userId + ". Forcing re-login.");
+        Toast.makeText(this, "Authentication state missing. Please log in again.", Toast.LENGTH_LONG).show();
+        // Logging out and clearing keys is important before redirecting
+        auth.signOut(); // Use global instance
+        YourKeyManager.getInstance().clearKeys();
+        SecureKeyStorageUtil.clearAllSecureKeys(this, userId);
+        sharedPreferences.edit().putBoolean(PREF_REMEMBER_ME, false).apply();
+        Log.d(TAG, "RememberMe preference set to FALSE on critical navigation error.");
+        navigateToLoginScreen();
+        return; // Stop processing
+    }
+
+    DatabaseReference userRef = FirebaseDatabase.getInstance().getReference("Users").child(userId);
+
+    userRef.get().addOnCompleteListener(task -> {
+        // Ensure progress dialog is dismissed here, regardless of success or failure below
+        // Use the member dialog declared in MainActivity
+        if (progressDialog != null && progressDialog.isShowing()) {
+            progressDialog.dismiss();
+        }
+
+        if (task.isSuccessful() && task.getResult().exists()) {
+            DataSnapshot snapshot = task.getResult();
+            String role = snapshot.child("role").getValue(String.class); // Assuming 'role' field exists
+
+            // Log the key state *after* successful user data load and role check for informational purposes
+            Log.d(TAG, "User data loaded, proceeding with role check. KeyManager state: Private Available=" + YourKeyManager.getInstance().isPrivateKeyAvailable() + ", Public Key Available=" + (YourKeyManager.getInstance().getUserPublicKey() != null));
+
+
+            // *** NEW / MODIFIED ROLE CHECK LOGIC START ***
+            if (role != null && role.equals("admin")) {
+                // User is admin. Log them out and block access to user app.
+                Log.d(TAG, "checkUserRoleAndNavigate: User is Admin. Blocking login to user app for UID: " + userId);
+
+                Toast.makeText(this, "Admin accounts cannot log in using this app.", Toast.LENGTH_LONG).show();
+
+                // Perform logout from Firebase Auth
+                auth.signOut(); // Use global instance
+
+                // Clear any potentially loaded keys from KeyManager
+                YourKeyManager.getInstance().clearKeys();
+                // Clear any potentially saved local keys for this user
+                SecureKeyStorageUtil.clearAllSecureKeys(this, userId);
+                // Ensure RememberMe preference is set to false for this account on this app
+                sharedPreferences.edit().putBoolean(PREF_REMEMBER_ME, false).apply();
+                Log.d(TAG, "RememberMe preference set to FALSE on admin login attempt.");
+
+                // Redirect back to the login screen (or just finish, since we are already there)
+                // navigateToLoginScreen(); // This method clears stack and finishes, which is correct.
+                // If you are already on the login screen and just showed a toast, maybe just clear state and don't navigate again.
+                // Let's just finish this activity if it was launched via intent (though it's Login itself).
+                // A simple finish() might suffice if Login is the task root, but navigateToLoginScreen is safer.
+                navigateToLoginScreen(); // Ensure the login screen is the final state with cleared stack.
+
+            } else if (role != null && role.equals("user")) { // Assuming "user" is the standard role
+                // User is a standard user. Proceed with normal navigation to MainActivity.
+                Log.d(TAG, "checkUserRoleAndNavigate: User is standard user. Navigating to Main Activity.");
+                Intent intent = new Intent(Login.this, MainActivity.class);
+                intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
+                startActivity(intent);
+                finish(); // Finish Login activity after navigation
+                Log.d(TAG, "checkUserRoleAndNavigate: Login Activity finished after successful navigation.");
+
+            } else { // Role is missing, empty, or something unexpected (not "admin" or "user")
+                // Treat as critical error for an authenticated user with data but no valid role.
+                Log.e(TAG, "checkUserRoleAndNavigate: User role is missing, empty, or invalid ('" + role + "') for UID: " + userId + ". Logging out.");
+                Toast.makeText(this, "Invalid user role data. Please contact support. Logging out.", Toast.LENGTH_LONG).show();
+                // Log out and redirect
+                auth.signOut(); // Use global instance
+                YourKeyManager.getInstance().clearKeys();
+                SecureKeyStorageUtil.clearAllSecureKeys(this, userId);
+                sharedPreferences.edit().putBoolean(PREF_REMEMBER_ME, false).apply();
+                Log.d(TAG, "RememberMe preference set to FALSE on missing/invalid role.");
+                navigateToLoginScreen(); // Redirect to Login
+            }
+            // *** END NEW / MODIFIED ROLE CHECK LOGIC ***
+
+        } else {
+            // User data not found in DB for an authenticated user - Critical error.
+            Log.e(TAG, "checkUserRoleAndNavigate: User data not found in DB for UID: " + userId + " during role check. Treating as critical error and logging out.");
+            Toast.makeText(this, "User data not found! Please contact support. Logging out.", Toast.LENGTH_LONG).show();
+            // Log out and redirect
+            auth.signOut(); // Use global instance
+            YourKeyManager.getInstance().clearKeys();
+            SecureKeyStorageUtil.clearAllSecureKeys(this, userId);
+            sharedPreferences.edit().putBoolean(PREF_REMEMBER_ME, false).apply();
+            Log.d(TAG, "RememberMe preference set to FALSE on user data not found.");
+            navigateToLoginScreen(); // Redirect to Login
+        }
+    });
+}
+
     @Override
     protected void onDestroy() {
         super.onDestroy();

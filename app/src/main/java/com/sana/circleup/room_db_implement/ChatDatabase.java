@@ -51,7 +51,10 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 // Update the entities list and increment the version
-@Database(entities = {ChatEntity.class,WallpaperEntity.class, UserEntity.class,ContactEntity.class, MessageEntity.class, ConversationKeyEntity.class, GroupEntity.class, TemporaryRoomEntity.class, GroupMessageEntity.class}, version = 24, exportSchema = false) // <<< Increment version and add GroupMessageEntity
+@Database(entities = {ChatEntity.class,WallpaperEntity.class, UserEntity.class,ContactEntity.class,
+        MessageEntity.class, ConversationKeyEntity.class,DeletedMessageIdEntity.class, GroupEntity.class,
+        TemporaryRoomEntity.class, GroupMessageEntity.class},
+        version = 25, exportSchema = false) // <<< Increment version and add GroupMessageEntity
 @TypeConverters({ChatDatabase.Converters.class}) // Reference the nested Converters class
 public abstract class ChatDatabase extends RoomDatabase {
 
@@ -60,6 +63,7 @@ public abstract class ChatDatabase extends RoomDatabase {
     public abstract WallpaperDao wallpaperDao(); // *** NEW: Abstract method for WallpaperDao ***
     // Add abstract method for the new DAO
     public abstract GroupMessageDao groupMessageDao(); // <<< ADD THIS LINE
+    public abstract DeletedMessageIdDao deletedMessageIdDao();
 
 
     // Add abstract method for the new DAO
@@ -121,25 +125,6 @@ public abstract class ChatDatabase extends RoomDatabase {
             return new Gson().toJson(map);
         }
 
-        // Add other TypeConverters here if you have custom types (e.g., List of Strings)
-        // Example: for List<String>
-        /*
-        @TypeConverter
-        public static List<String> fromStringToListString(String value) {
-             if (value == null) {
-                return Collections.emptyList();
-            }
-            Type listType = new TypeToken<List<String>>() {}.getType();
-            return new Gson().fromJson(value, listType);
-        }
 
-        @TypeConverter
-        public static String fromListStringToString(List<String> list) {
-             if (list == null) {
-                return null;
-            }
-            return new Gson().toJson(list);
-        }
-        */
     }
 }

@@ -24,6 +24,7 @@ import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.widget.SearchView;
 import androidx.fragment.app.Fragment;
+import androidx.lifecycle.Lifecycle;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.Observer;
 import androidx.recyclerview.widget.LinearLayoutManager;
@@ -43,6 +44,7 @@ import com.google.firebase.database.ValueEventListener;
 import com.sana.circleup.ChatAdapter;
 import com.sana.circleup.ChatPageActivity;
 import com.sana.circleup.Login;
+import com.sana.circleup.ProfileUserInfoActivity;
 import com.sana.circleup.R;
 import com.sana.circleup.encryptionfiles.CryptoUtils;
 import com.sana.circleup.encryptionfiles.YourKeyManager;
@@ -71,6 +73,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.SortedMap;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 
 import javax.crypto.BadPaddingException;
@@ -4329,15 +4332,16 @@ public class ChatFragment extends Fragment implements ChatAdapter.OnChatInteract
 
 
     // --- Observe LiveData from Room DAO (Single Key Decryption Logic) ---
+    // --- Observe LiveData from Room DAO (Processing on Background Thread) ---
     private void observeChatList() {
         // Ensure currentUserID and chatDao are initialized before observing
-        if (currentUserID == null || chatDao == null) {
-            Log.e(TAG, "currentUserID or chatDao is null, cannot observe chat list.");
+        if (currentUserID == null || chatDao == null || databaseExecutor == null || messageDao == null) { // Add executor and messageDao checks
+            Log.e(TAG, "currentUserID, chatDao, databaseExecutor, or messageDao is null, cannot observe chat list.");
             showAuthenticationErrorUI(); // Show error UI
             return; // Exit method if prerequisites are missing
         }
         Log.d(TAG, "Attaching Room LiveData observer for user: " + currentUserID);
-        // Get the LiveData from the DAO for chats owned by the current user, ordered by latest message timestamp
+        // Get the LiveData from the DAO for chats owned by the current user, ordered by latest message timestamp from Summary
         // Make sure your ChatDao.getAllChats method queries WHERE ownerUserId = :ownerUserId ORDER BY timestamp DESC
         chatListLiveData = chatDao.getAllChats(currentUserID); // Assuming this method exists and takes ownerId
 
@@ -4346,198 +4350,316 @@ public class ChatFragment extends Fragment implements ChatAdapter.OnChatInteract
         chatListLiveData.observe(getViewLifecycleOwner(), new Observer<List<ChatEntity>>() { // Use Observer interface
             @Override
             public void onChanged(List<ChatEntity> chatEntities) {
-                // This observer runs on the main thread whenever the data in Room changes
-                Log.d(TAG, "LiveData onChanged triggered. Received " + (chatEntities != null ? chatEntities.size() : 0) + " chats from Room for owner: " + currentUserID);
+                // This observer callback runs on the main thread when data changes in Room.
+                // We will now offload the heavy processing (DB query, decryption) to a background thread.
+                Log.d(TAG, "LiveData onChanged triggered. Received " + (chatEntities != null ? chatEntities.size() : 0) + " chats from Room (Initial List) for owner: " + currentUserID);
 
-                // Create a new list to hold ChatEntity objects with processed content for the adapter
-                // It's safer to create a new list than modify the one provided by LiveData
-                List<ChatEntity> processedChatList = new ArrayList<>();
+                // Submit the processing of the list to the databaseExecutor (background thread)
+                databaseExecutor.execute(() -> {
+                    // This code runs on a background thread (databaseExecutor)
 
-                // Check if the user's main private key is available BEFORE processing messages
-                boolean isPrivateKeyAvailable = YourKeyManager.getInstance().isPrivateKeyAvailable(); // Check user's main private key state
+                    List<ChatEntity> processedChatList = new ArrayList<>();
 
+                    // Get the current state of the user's private key and conversation keys
+                    // These calls should be thread-safe if YourKeyManager is implemented correctly.
+                    boolean isPrivateKeyAvailable = YourKeyManager.getInstance().isPrivateKeyAvailable(); // Check user's main private key state
+                    // We will get the specific conversation key inside the loop if needed
 
-                if (chatEntities != null) {
-                    for (ChatEntity chat : chatEntities) {
-                        // Ensure chat entity is not null
-                        if (chat == null) {
-                            Log.w(TAG, "Skipping null ChatEntity from Room list.");
-                            continue;
-                        }
-                        // --- Get all necessary fields from the original Room ChatEntity ---
-                        String encryptedLastMessage = chat.getLastMessage(); // This is the encrypted Base64 string or placeholder from Room
-                        String chatPartnerId = chat.getUserId();
-                        String conversationId = chat.getConversationId(); // Get the conversation ID
-                        String lastMessageType = chat.getLastMessageType(); // Get lastMessageType from ChatEntity
-                        // Other fields like username, profileImage, timestamp, unreadCount, ownerUserId are copied later
-
-
-                        // This will be the string shown in the UI bubble, initialize as empty or placeholder
-                        String displayedLastMessagePreview = "";
-
-
-                        // Default placeholder based on type if content is empty or decryption fails
-                        String placeholder = "";
-                        if ("image".equals(lastMessageType)) placeholder = "[Image]";
-                        else if ("file".equals(lastMessageType)) placeholder = "[File]";
-                        else placeholder = ""; // Default for text or unknown
-
-
-                        boolean messageShouldBeEncrypted = ("text".equals(lastMessageType) || "image".equals(lastMessageType));
-
-                        // --- Logic to determine what to display for the last message preview (Single Key) ---
-
-                        // Handle system message type first (it's not encrypted text/image)
-                        if ("system_key_change".equals(lastMessageType)) {
-                            displayedLastMessagePreview = encryptedLastMessage; // Stored content is the actual message text for system type
-                            if (TextUtils.isEmpty(displayedLastMessagePreview)) {
-                                displayedLastMessagePreview = "[System Message]"; // Fallback placeholder
+                    if (chatEntities != null) {
+                        for (ChatEntity chat : chatEntities) {
+                            // Ensure chat entity is not null
+                            if (chat == null) {
+                                Log.w(TAG, "Skipping null ChatEntity from Room list during background processing.");
+                                continue;
                             }
-                            // Log.d(TAG, "Preview Debug: Processing system_key_change message for chat " + conversationId);
-                        }
-                        // Attempt decryption only IF it's a type that *should* be encrypted AND content exists AND keys are available
-                        else if (messageShouldBeEncrypted && !TextUtils.isEmpty(encryptedLastMessage) && isPrivateKeyAvailable) {
+                            // --- Get all necessary fields from the original Room ChatEntity ---
+                            // These fields are from the ChatEntity synced from Firebase Summary.
+                            // We keep them to populate the processedChat entity and for sorting.
+                            String chatPartnerId = chat.getUserId(); // Get chat partner ID
+                            String conversationId = chat.getConversationId(); // Get the conversation ID
+                            String lastMessageType = chat.getLastMessageType(); // Get lastMessageType from ChatEntity (from Summary)
+                            long originalSummaryTimestamp = chat.getTimestamp(); // Keep original timestamp for sorting
 
-                            // Get the *single* conversation key from KeyManager
-                            SecretKey conversationAESKey = YourKeyManager.getInstance().getConversationKey(conversationId); // <<< Use single-key method
 
-                            if (conversationAESKey != null) { // Check if the key was successfully retrieved from cache
-                                // Log.d(TAG, "Preview Debug: Conversation key found. Attempting decryption for chat " + conversationId);
-                                try {
-                                    // Decode Base64 string to bytes using CryptoUtils.base64ToBytes (for crypto data)
-                                    byte[] encryptedBytesWithIV = CryptoUtils.base64ToBytes(encryptedLastMessage); // <<< Use CryptoUtils
-                                    if (encryptedBytesWithIV == null || encryptedBytesWithIV.length == 0) {
-                                        Log.w(TAG, "Preview Debug: Decoded encrypted bytes null/empty for preview in chat " + conversationId);
-                                        displayedLastMessagePreview = "[Invalid Encrypted Data]"; // Fallback placeholder
+                            // This will be the final string shown in the UI bubble preview
+                            String displayedContent = "";
+                            String processingOutcome = "Default"; // For logging outcome
+
+
+                            // --- NEW: Query for the latest local UNDELETED message for this specific chat ---
+                            // Use the new synchronous method in MessageDao
+                            // This gives us the most recent message content actually available to the user locally.
+                            MessageEntity latestLocalUndeletedMessage = messageDao.getLastLocalUndeletedMessage(currentUserID, chatPartnerId);
+
+                            if (latestLocalUndeletedMessage == null) {
+                                // No local messages found for this chat that are NOT marked as deleted for me.
+                                // This chat is effectively empty for this user.
+                                displayedContent = "[No messages]"; // Or an empty string "" depending on desired UI
+                                processingOutcome = "No Local Undeleted Messages";
+                                // Log.d(TAG, "Preview Processing: No local undeleted messages found for chat with " + chatPartnerId + " (" + conversationId + "). Showing placeholder.");
+
+                            } else {
+                                // Found a local message. Use its content and type for the preview logic.
+                                String storedMessageContentFromLocal = latestLocalUndeletedMessage.getMessage(); // Content from the local message (Base64, plaintext, or placeholder)
+                                String localMessageType = latestLocalUndeletedMessage.getType(); // Type from the local message
+                                String localScheduledTime = latestLocalUndeletedMessage.getScheduledTime(); // *** Get scheduled time from local message ***
+                                boolean isLocalMessageScheduled = !TextUtils.isEmpty(localScheduledTime); // *** Check if scheduled ***
+
+
+                                // Determine if the local message type is one we expect to be encrypted
+                                boolean isExpectedEncryptedType = ("text".equals(localMessageType) || "image".equals(localMessageType));
+
+                                // Define known specific placeholder strings that the Worker or ChatPage might save directly as content
+                                // These are strings like "[Image]", "[File]", "[Locked]", etc.
+                                boolean isKnownSpecificPlaceholder = !TextUtils.isEmpty(storedMessageContentFromLocal) && (
+                                        // Include placeholders from ChatFragment and ChatPageActivity
+                                        "[No messages]".equals(storedMessageContentFromLocal) || // Should not happen in local *message* content
+                                                "[Image]".equals(storedMessageContentFromLocal) ||
+                                                "[File]".equals(storedMessageContentFromLocal) ||
+                                                "[Locked]".equals(storedMessageContentFromLocal) ||
+                                                "[Tap to Load Chat]".equals(storedMessageContentFromLocal) || // Should not happen in local *message* content
+                                                "[Encrypted Message - Failed]".equals(storedMessageContentFromLocal) ||
+                                                "[Invalid Encrypted Data]".equals(storedMessageContentFromLocal) ||
+                                                "[System Message]".equals(storedMessageContentFromLocal) || // System message placeholder
+                                                "[System Message Data Missing]".equals(storedMessageContentFromLocal) // System message placeholder
+                                );
+
+
+                                // --- Logic to determine what to display for the last message preview from the LOCAL message ---
+
+                                // 1. Handle System messages - their content is already plaintext
+                                if ("system_key_change".equals(localMessageType)) {
+                                    displayedContent = storedMessageContentFromLocal; // Use the content directly from Room
+                                    processingOutcome = "System Message (Local)";
+                                    if (TextUtils.isEmpty(displayedContent)) displayedContent = "[System Message]"; // Fallback
+
+                                }
+                                // --- NEW: Handle Scheduled Messages (treat as plaintext/raw) ---
+                                // This check comes BEFORE the decryption attempt for non-scheduled messages.
+                                else if (isLocalMessageScheduled) {
+                                    displayedContent = storedMessageContentFromLocal; // Display the content directly (it's plaintext/raw)
+                                    processingOutcome = "Scheduled Message (Local, Plaintext)";
+                                    if (TextUtils.isEmpty(displayedContent)) {
+                                        // Fallback placeholder for empty scheduled content
+                                        if ("image".equals(localMessageType)) displayedContent = "[Scheduled Image]";
+                                        else if ("file".equals(localMessageType)) displayedContent = "[Scheduled File]"; // Assuming scheduled files are a thing
+                                        else displayedContent = "[Scheduled Text]";
+                                        processingOutcome += " (Content Empty Fallback)";
+                                    }
+
+                                }
+                                // 2. Handle known Specific Placeholders - display them directly without any decryption attempt
+                                // These are placeholders stored *as the content* in Room for specific states.
+                                else if (isKnownSpecificPlaceholder) {
+                                    displayedContent = storedMessageContentFromLocal; // Display the placeholder string as is
+                                    processingOutcome = "Known Specific Placeholder (Local)";
+
+                                }
+                                // 3. Attempt Decryption IF it's an expected encrypted type AND content exists AND keys are available
+                                // AND it's NOT a scheduled message (handled above) AND it's NOT a known placeholder (handled above).
+                                // We check both isPrivateKeyAvailable AND hasConversationKey for decryption capability.
+                                else if (isExpectedEncryptedType && !TextUtils.isEmpty(storedMessageContentFromLocal) && isPrivateKeyAvailable && YourKeyManager.getInstance().hasConversationKey(conversationId)) {
+
+                                    processingOutcome = "Attempting Decryption (Local, Keys Available)";
+                                    // Log.d(TAG, "Preview Processing: Attempting decryption for local message in conv ID: " + conversationId); // Debug log
+
+
+                                    // Get the *single* conversation key from KeyManager cache
+                                    SecretKey conversationAESKey = YourKeyManager.getInstance().getConversationKey(conversationId); // Get key from cache
+
+
+                                    // Double-check key is not null (should be true if hasConversationKey was true)
+                                    if (conversationAESKey == null) {
+                                        Log.e(TAG, "Preview Processing: Conversation key became null unexpectedly during decryption attempt for conv " + conversationId + ". Should not happen if hasConversationKey was true.");
+                                        displayedContent = "[Decryption Error - Key Lost]";
+                                        processingOutcome = "Decryption Error (Key Lost, Local)";
                                     } else {
-                                        // Decrypt bytes using CryptoUtils.decryptMessageWithAES
-                                        String decryptedContent = CryptoUtils.decryptMessageWithAES(encryptedBytesWithIV, conversationAESKey); // <<< Use CryptoUtils
+                                        try {
+                                            // Decode Base64 string from Room to bytes using CryptoUtils
+                                            byte[] encryptedBytesWithIV = CryptoUtils.base64ToBytes(storedMessageContentFromLocal);
 
-                                        // If decryption succeeds:
-                                        if ("text".equals(lastMessageType)) {
-                                            int maxLength = 50; // Preview ki max length
-                                            displayedLastMessagePreview = decryptedContent.length() > maxLength ?
-                                                    decryptedContent.substring(0, maxLength) + "..." :
-                                                    decryptedContent; // Use decrypted text or snippet
-                                            // Log.d(TAG, "Last message preview decrypted successfully: " + displayedLastMessagePreview); // Avoid logging content
+                                            if (encryptedBytesWithIV == null || encryptedBytesWithIV.length == 0) {
+                                                Log.w(TAG, "Preview Processing: Decoded encrypted bytes null or empty for local preview in conv " + conversationId);
+                                                displayedContent = (localMessageType.equals("image") ? "[Invalid Encrypted Image Data]" : "[Invalid Encrypted Data]");
+                                                processingOutcome = "Decoded Empty (Local)";
 
-                                        } else if ("image".equals(lastMessageType)) {
-                                            // For image previews, show placeholder in the list
-                                            displayedLastMessagePreview = placeholder; // Placeholder like "[Image]"
+                                            } else {
+                                                // Decrypt bytes using the conversation key
+                                                String decryptedContent = CryptoUtils.decryptMessageWithAES(encryptedBytesWithIV, conversationAESKey);
 
-                                        } else { // Should not happen based on outer if condition, but fallback
-                                            displayedLastMessagePreview = "[Unknown Type - Decrypted]";
-                                            Log.w(TAG, "Unexpected message type '" + lastMessageType + "' processed for decryption in chat " + conversationId);
+                                                // If decryption succeeds:
+                                                if ("text".equals(localMessageType)) {
+                                                    int maxLength = 50; // Preview length limit
+                                                    displayedContent = decryptedContent.length() > maxLength ?
+                                                            decryptedContent.substring(0, maxLength) + "..." :
+                                                            decryptedContent; // Use decrypted text or snippet
+                                                    // Log.d(TAG, "Preview Processing: Decrypted text preview: " + displayedContent); // Avoid logging content
+                                                    processingOutcome = "Decrypted Success (Text, Local)";
+
+                                                } else if ("image".equals(localMessageType)) {
+                                                    // For image previews, show a placeholder even after successful decryption in the list
+                                                    displayedContent = "[Image]"; // Placeholder for images in list
+                                                    processingOutcome = "Decrypted Success (Image, Local)";
+                                                } else { // Should not happen based on outer if condition, but fallback
+                                                    displayedContent = "[Unknown Type - Decrypted]";
+                                                    processingOutcome = "Decrypted Success (Unknown Type, Local)";
+                                                }
+                                            } // End else (decoded bytes not null/empty)
+
+                                        } catch (IllegalArgumentException e) { // Base64 decoding error or invalid bytes format
+                                            Log.e(TAG, "Preview Processing: Base64 decoding error decrypting local preview for conv " + conversationId, e);
+                                            displayedContent = "[Invalid Encrypted Data]"; // Placeholder on Base64 error
+                                            processingOutcome = "Base64 Decoding Error (Local)";
+                                        } catch (BadPaddingException |
+                                                 IllegalBlockSizeException |
+                                                 InvalidKeyException | // Catch InvalidKeyException if the key is wrong
+                                                 InvalidAlgorithmParameterException e) {
+                                            // Crypto decryption failed for THIS key!
+                                            Log.w(TAG, "Preview Processing: Decryption FAILED with conversation key for local msg in conv " + conversationId + ". Exception: " + e.getClass().getSimpleName());
+                                            displayedContent = "[Encrypted Message - Failed]"; // Placeholder on crypto error with available key
+                                            processingOutcome = "Decryption Failed (Crypto Error, Local)";
+                                        } catch (Exception e) { // Catch any other unexpected errors
+                                            Log.w(TAG, "Preview Processing: Unexpected error during local decryption for conv " + conversationId, e);
+                                            displayedContent = "[Encrypted Message - Failed]"; // Fallback placeholder
+                                            processingOutcome = "Decryption Failed (Unexpected Error, Local)";
                                         }
-                                    } // End else (decoded bytes not null/empty)
+                                    } // End else (conversationAESKey != null)
+                                }
+                                // 4. If decryption was NOT attempted because keys were unavailable
+                                else if (isExpectedEncryptedType && !TextUtils.isEmpty(storedMessageContentFromLocal) && (!isPrivateKeyAvailable || !YourKeyManager.getInstance().hasConversationKey(conversationId))) {
+                                    // Content exists and should be encrypted, but keys are missing/unavailable
+                                    // This is the case where PrivateKey is null OR ConversationKey is null in KeyManager
+                                    displayedContent = "[Locked]"; // Placeholder indicating account needs unlocking or keys need loading
+                                    processingOutcome = "Keys Unavailable (Local)";
 
-                                } catch (IllegalArgumentException e) { // Base64 decoding error (from Room data)
-                                    Log.e(TAG, "Preview Debug: Base64 decoding error decrypting preview for " + conversationId, e);
-                                    displayedLastMessagePreview = "[Invalid Encrypted Data]"; // Placeholder on Base64 error
-                                } catch (Exception e) { // Catch decryption errors (wrong key, corrupt data, padding issues)
-                                    // This key *could* be the wrong key (if the other user reset theirs).
-                                    // In single-key model, we just show failure.
-                                    Log.w(TAG, "Preview Debug: Decryption FAILED with conversation key for chat " + conversationId + ". Exception: " + e.getClass().getSimpleName() + ". Showing failed placeholder.");
-                                    displayedLastMessagePreview = "[Encrypted Message - Failed]"; // Placeholder on crypto error with available key
+                                }
+                                // 5. Fallback for any other case:
+                                //    - Not an expected encrypted type (e.g., "file")
+                                //    - Message content from Room is empty after checking Scheduled/System
+                                //    - Any other scenario not covered above, including unexpected data.
+                                else {
+                                    // Display the content as it was stored in Room.
+                                    displayedContent = storedMessageContentFromLocal;
+                                    processingOutcome = "Fallback Display (Local)";
+                                    if (TextUtils.isEmpty(displayedContent)) {
+                                        // Fallback to a type-based placeholder if stored content is empty
+                                        if ("image".equals(localMessageType)) displayedContent = "[Image]";
+                                        else if ("file".equals(localMessageType)) displayedContent = "[File]";
+                                        else if ("system_key_change".equals(localMessageType)) displayedContent = "[System Message]";
+                                        else displayedContent = "[Message]"; // Generic placeholder
+                                        processingOutcome += " (Content Empty, Used Type Placeholder)";
+                                    } else {
+                                        // If content is not empty but didn't match encrypted types or placeholders, it's displayed as is.
+                                        processingOutcome += " (Displayed as is, Local)";
+                                    }
+                                }
+                                // --- End Logic (using Local message) ---
+                            } // End else (latestLocalUndeletedMessage != null)
+
+
+                            // Create a NEW ChatEntity object for the adapter with processed content
+                            ChatEntity processedChat = new ChatEntity();
+                            // Copy all fields from the original chat entity
+                            processedChat.setId(chat.getId()); // Make sure to copy Room auto-generated ID (if used)
+                            processedChat.setOwnerUserId(chat.getOwnerUserId()); // Keep the owner ID
+                            processedChat.setUserId(chat.getUserId()); // Keep the chat partner ID
+                            processedChat.setConversationId(chat.getConversationId()); // Keep the conversation ID
+                            processedChat.setUsername(chat.getUsername()); // Keep the username
+                            processedChat.setProfileImage(chat.getProfileImage()); // Keep the profile image
+
+                            // *** Set the PROCESSED/DECRYPTED/PLACEHOLDER content determined based on LOCAL messages ***
+                            processedChat.setLastMessage(displayedContent);
+
+                            // Keep the original timestamp from the ChatEntity (Summary) for sorting,
+                            // as this timestamp represents the last activity time of the chat thread overall in Firebase.
+                            processedChat.setTimestamp(originalSummaryTimestamp);
+
+                            // Keep other fields from the original ChatEntity
+                            processedChat.setUnreadCount(chat.getUnreadCount()); // Keep the unread count
+                            // Use the message type from the *latest local message* if one was found, otherwise default or use original summary type
+                            processedChat.setLastMessageType(latestLocalUndeletedMessage != null ? latestLocalUndeletedMessage.getType() : lastMessageType);
+                            // Optional: If ChatEntity has partnerKeysChanged, copy it:
+                            // processedChat.setPartnerKeysChanged(chat.isPartnerKeysChanged());
+
+
+                            processedChatList.add(processedChat); // Add the processed entity to the list for the adapter
+
+                            // Log the final outcome for this chat preview processing
+                            Log.d(TAG, "Preview Processing: Chat with " + chatPartnerId + " (" + conversationId + "). Outcome: " + processingOutcome + ". Final Displayed: '" + (displayedContent != null && displayedContent.length() > 5 ? displayedContent.substring(0, Math.min(displayedContent.length(), 50)) + (displayedContent.length() > 50 ? "..." : "") : displayedContent) + "'"); // Add null check for displayedContent and limit log length
+
+
+                        } // End of for loop through chatEntities
+                    } // End of if (chatEntities != null) check
+
+
+                    // Sort the list by the original ChatEntity timestamp DESC (latest chat activity first).
+                    // This ensures the list is ordered by when the last message was sent globally, not locally.
+                    if (processedChatList.size() > 1) { // Only sort if more than one item
+                        Collections.sort(processedChatList, (c1, c2) -> Long.compare(c2.getTimestamp(), c1.getTimestamp()));
+                    }
+
+
+                    // --- Post the processed list back to the Main Thread to update the UI ---
+                    final List<ChatEntity> finalProcessedChatList = processedChatList; // Make final for handler
+                    mainHandler.post(() -> { // Post to the main thread
+                        // This code runs on the Main Thread
+
+                        // Check if the fragment's view is still valid before updating UI components
+                        if (getViewLifecycleOwner().getLifecycle().getCurrentState().isAtLeast(Lifecycle.State.CREATED)) { // Check if view is at least CREATED
+
+                            // Update the adapter with the new list of processed chats
+                            if (chatAdapter != null) {
+                                // Use submitList (more efficient with DiffUtil if implemented in adapter). Pass a *copy*.
+                                // Using ArrayList<>(finalProcessedChatList) ensures a new list is passed.
+                                chatAdapter.submitList(new ArrayList<>(finalProcessedChatList));
+                                Log.d(TAG, "Submitted " + finalProcessedChatList.size() + " processed chats to adapter.");
+                            } else {
+                                Log.e(TAG, "ChatAdapter is null, cannot submit list on Main Thread.");
+                            }
+
+
+                            // Update UI visibility based on the final list size
+                            if (finalProcessedChatList.size() > 0) {
+                                if (privateChatsList != null) privateChatsList.setVisibility(View.VISIBLE); // Corrected RecyclerView variable name
+                                if (noChatsText != null) noChatsText.setVisibility(View.GONE); // Safety check
+                                // Show search view only if there are chats to search
+                                if (searchView != null) searchView.setVisibility(View.VISIBLE); // Safety check
+                                Log.d(TAG, "Chat list visible after processing.");
+                            } else {
+                                if (privateChatsList != null) privateChatsList.setVisibility(View.GONE); // Corrected RecyclerView variable name
+                                if (noChatsText != null) {
+                                    noChatsText.setVisibility(View.VISIBLE);
+                                    noChatsText.setText("No chats yet"); // Message when list is empty
+                                }
+                                // Hide search view if there are no chats
+                                if (searchView != null) searchView.setVisibility(View.GONE); // Safety check
+                                Log.d(TAG, "No chats found after processing, showing No chats text.");
+                            }
+
+                            // Re-apply search filter if there's an active query
+                            // The adapter's filter method should work on the list containing *displayed* previews
+                            if (searchView != null && chatAdapter != null) {
+                                String currentQuery = searchView.getQuery().toString();
+                                if (!TextUtils.isEmpty(currentQuery)) {
+                                    Log.d(TAG, "Applying search filter after processing: '" + currentQuery + "'");
+                                    // Ensure adapter's filter method works with the list containing processed previews
+                                    // The adapter's filter logic should compare the *displayed* last message preview text
+                                    chatAdapter.filter(currentQuery);
                                 }
                             } else {
-                                // User's private key is available, but the specific conversation key is NOT in KeyManager's cache.
-                                // This indicates the key needs to be loaded by clicking the chat.
-                                // Log.d(TAG, "Preview Debug: User's private key available, but Conversation key NOT in KeyManager cache for chat " + conversationId + ". Cannot decrypt preview.");
-                                displayedLastMessagePreview = "[Tap to Load Chat]"; // Placeholder indicating key needs loading
+                                Log.w(TAG, "SearchView or ChatAdapter is null, cannot re-apply filter after processing.");
                             }
-
-                        } else if (messageShouldBeEncrypted && !TextUtils.isEmpty(encryptedLastMessage) && !isPrivateKeyAvailable) { // Keys are simply NOT available at all
-                            // Content exists and should be encrypted, but the user's main private key is missing/unavailable (account locked)
-                            // Log.d(TAG, "Preview Debug: Message in " + conversationId + " is encrypted, but User's Private Key is NOT available. Showing [Locked] placeholder.");
-                            displayedLastMessagePreview = "[Locked]"; // Placeholder indicating account needs unlocking
-
                         } else {
-                            // Default case: Not expected to be encrypted (file, system message), OR content is empty.
-                            // Display the content as it was stored in Room (Base64 for image/file, or plaintext for system)
-                            displayedLastMessagePreview = encryptedLastMessage; // Use the content stored in Room
-                            if (TextUtils.isEmpty(displayedLastMessagePreview)) {
-                                displayedLastMessagePreview = placeholder; // Fallback to a type-based placeholder if stored content is empty
-                            }
-                            // Log.d(TAG, "Preview Debug: Displaying stored content as is for chat " + conversationId + " (Type: " + lastMessageType + ")");
+                            Log.w(TAG, "Fragment view lifecycle state is less than CREATED. Skipping UI update after background processing.");
                         }
-                        // --- End Logic ---
-
-
-                        // Create a NEW ChatEntity object for the adapter with processed content
-                        ChatEntity processedChat = new ChatEntity();
-                        // Copy all fields from the original chat entity, but set the processed message
-                        processedChat.setId(chat.getId()); // Make sure to copy Room auto-generated ID
-                        processedChat.setOwnerUserId(chat.getOwnerUserId()); // Keep the owner ID
-                        processedChat.setUserId(chat.getUserId()); // Keep the chat partner ID
-                        processedChat.setConversationId(chat.getConversationId()); // Keep the conversation ID
-                        processedChat.setUsername(chat.getUsername()); // Keep the username
-                        processedChat.setProfileImage(chat.getProfileImage()); // Keep the profile image
-                        processedChat.setLastMessage(displayedLastMessagePreview); // *** Set the PROCESSED/DECRYPTED preview content ***
-                        processedChat.setTimestamp(chat.getTimestamp()); // Keep the timestamp
-                        processedChat.setUnreadCount(chat.getUnreadCount()); // Keep the unread count
-                        processedChat.setLastMessageType(chat.getLastMessageType());
-                        // If ChatEntity has partnerKeysChanged, copy it:
-                        // processedChat.setPartnerKeysChanged(chat.isPartnerKeysChanged());
-
-
-                        processedChatList.add(processedChat); // Add the processed entity to the list for the adapter
-                    }
-                }
-
-                // Sort the list by timestamp DESC (latest message first). Ensure this matches your DAO query ORDER BY.
-                // If your DAO query already sorts correctly, this step is redundant but safe.
-                if (processedChatList.size() > 1) { // Only sort if more than one item
-                    Collections.sort(processedChatList, (c1, c2) -> Long.compare(c2.getTimestamp(), c1.getTimestamp()));
-                }
-
-
-                // Submit the list of ChatEntity with processed last messages to the adapter
-                if (chatAdapter != null) {
-                    // Use submitList (more efficient with DiffUtil if implemented in adapter). Pass a *copy*.
-                    // Using ArrayList<>(processedChatList) ensures a new list is passed, preventing issues with adapter's internal list reference.
-                    chatAdapter.submitList(new ArrayList<>(processedChatList));
-                    Log.d(TAG, "Submitted " + processedChatList.size() + " processed chats to adapter.");
-                } else {
-                    Log.e(TAG, "ChatAdapter is null, cannot submit list.");
-                }
-
-
-                // Update UI visibility based on the final list size
-                if (processedChatList.size() > 0) { // Check size > 0 for non-empty list
-                    if (privateChatsList != null) privateChatsList.setVisibility(View.VISIBLE); // Safety check
-                    if (noChatsText != null) noChatsText.setVisibility(View.GONE); // Safety check
-                    // Show search view only if there are chats to search
-                    if (searchView != null) searchView.setVisibility(View.VISIBLE); // Safety check
-                    // Log.d(TAG, "Chat list visible.");
-                } else {
-                    if (privateChatsList != null) privateChatsList.setVisibility(View.GONE); // Safety check
-                    if (noChatsText != null) { // Safety check
-                        noChatsText.setVisibility(View.VISIBLE);
-                        noChatsText.setText("No chats yet"); // Message when list is empty
-                    }
-                    // Hide search view if there are no chats
-                    if (searchView != null) searchView.setVisibility(View.GONE); // Safety check
-                    // Log.d(TAG, "No chats found after LiveData update, showing No chats text.");
-                }
-
-                // Re-apply search filter if there's an active query
-                // The adapter's filter method should work on the list containing *displayed* previews
-                if (searchView != null && chatAdapter != null) {
-                    String currentQuery = searchView.getQuery().toString();
-                    if (!TextUtils.isEmpty(currentQuery)) { // Check if query is not empty
-                        // Log.d(TAG, "Applying search filter after LiveData update: '" + currentQuery + "'");
-                        // Ensure adapter's filter method works with the list containing processed previews
-                        // The adapter's filter logic should compare the *displayed* last message preview text
-                        chatAdapter.filter(currentQuery);
-                    }
-                } else {
-                    Log.w(TAG, "SearchView or ChatAdapter is null, cannot re-apply filter.");
-                }
+                    }); // End mainHandler.post
+                }); // End databaseExecutor.execute()
             }
         });
     }
-    // --- End Observe LiveData ---
+    // --- End Observe LiveData (Processing on Background Thread) ---
+
+// ... (Keep the rest of your methods, including the new ones for delete for me) ...
 
 
     // --- Attach Real-time Listener for Firebase Chat Summaries ---
@@ -5015,7 +5137,7 @@ public class ChatFragment extends Fragment implements ChatAdapter.OnChatInteract
                     Log.d(TAG, "loadConversationKeyForChatAsync (Executor): Key found in Room. Decoding...");
                     try {
                         // Use android.util.Base64 for decoding from Room storage format
-                        byte[] decryptedKeyBytes = android.util.Base64.decode(keyEntity.getDecryptedKeyBase64(), android.util.Base64.DEFAULT);
+                        byte[] decryptedKeyBytes = Base64.decode(keyEntity.getDecryptedKeyBase64(), Base64.DEFAULT);
                         loadedKeyFromRoom = CryptoUtils.bytesToSecretKey(decryptedKeyBytes);
                         // Put the key into KeyManager's cache immediately if decoding was successful
                         YourKeyManager.getInstance().setConversationKey(conversationId, loadedKeyFromRoom); // <<< Use single-key KeyManager method
@@ -5113,7 +5235,7 @@ public class ChatFragment extends Fragment implements ChatAdapter.OnChatInteract
                                     if (!TextUtils.isEmpty(encryptedAesKeyForCurrentUserBase64)) {
                                         try {
                                             // Decode Base64 string using android.util.Base64 (Firebase storage format)
-                                            byte[] encryptedAesKeyBytes = android.util.Base64.decode(encryptedAesKeyForCurrentUserBase64, android.util.Base64.DEFAULT);
+                                            byte[] encryptedAesKeyBytes = Base64.decode(encryptedAesKeyForCurrentUserBase64, Base64.DEFAULT);
                                             // Attempt decryption using the *current* private key
                                             byte[] decryptedAesKeyBytes = CryptoUtils.decryptWithRSA(encryptedAesKeyBytes, currentUserPrivateKey);
                                             successfullyDecryptedKeyFromFirebase = CryptoUtils.bytesToSecretKey(decryptedAesKeyBytes);
@@ -5123,9 +5245,9 @@ public class ChatFragment extends Fragment implements ChatAdapter.OnChatInteract
                                             Log.d(TAG, "loadConversationKeyForChatAsync (Executor): Successfully decrypted key version " + keyTimestamp + " from Firebase for user " + currentUserID + " conv " + conversationId);
                                             // *** IMPORTANT: Break the loop once ONE key version is successfully decrypted! ***
                                             break; // Found a working key, stop searching further versions
-                                        } catch (javax.crypto.BadPaddingException |
-                                                 javax.crypto.IllegalBlockSizeException |
-                                                 java.security.InvalidKeyException e) {
+                                        } catch (BadPaddingException |
+                                                 IllegalBlockSizeException |
+                                                 InvalidKeyException e) {
                                             // Crypto decryption failed for THIS key version (likely due to old key from before a reset)
                                             // This is expected behavior if the user reset their keys and this is an old key version.
                                             Log.w(TAG, "loadConversationKeyForChatAsync (Executor): Crypto error during decryption of version " + keyTimestamp + " from Firebase for user " + currentUserID + " conv " + conversationId + ". This key version might be unreadable with current key.", e);
@@ -5161,7 +5283,7 @@ public class ChatFragment extends Fragment implements ChatAdapter.OnChatInteract
                                 // *** Save the successfully fetched/decrypted key to Room DB for persistence ***
                                 Log.d(TAG, "loadConversationKeyForChatAsync (Executor): Saving fetched/decrypted key version " + successfullyDecryptedKeyTimestamp + " to Room DB.");
                                 // Convert decrypted key bytes (successfullyDecryptedKeyFromFirebase.getEncoded()) to Base64 string for Room storage.
-                                String decryptedKeyBase64ForRoom = android.util.Base64.encodeToString(successfullyDecryptedKeyFromFirebase.getEncoded(), android.util.Base64.DEFAULT); // <<< Use android.util.Base64.DEFAULT
+                                String decryptedKeyBase64ForRoom = Base64.encodeToString(successfullyDecryptedKeyFromFirebase.getEncoded(), Base64.DEFAULT); // <<< Use android.util.Base64.DEFAULT
                                 // *** Use the SINGLE-KEY ConversationKeyEntity constructor and DAO method ***
                                 ConversationKeyEntity keyEntityToSave = new ConversationKeyEntity(currentUserID, conversationId, decryptedKeyBase64ForRoom); // <<< Use SINGLE-KEY constructor
                                 if (databaseExecutor != null && conversationKeyDao != null) {
@@ -5198,7 +5320,7 @@ public class ChatFragment extends Fragment implements ChatAdapter.OnChatInteract
                             triggerNewKeyGeneration = true;
                         }
 
-                    } catch (java.util.concurrent.ExecutionException | InterruptedException e) { // Handle Tasks.await() errors
+                    } catch (ExecutionException | InterruptedException e) { // Handle Tasks.await() errors
                         Log.e(TAG, "loadConversationKeyForChatAsync (Executor): Firebase fetch failed for key_versions", e);
                         errorMessage = "Failed to fetch key data from server. Network error?";
                         // Do NOT trigger new key generation on network error; it might be temporary.
@@ -5329,7 +5451,7 @@ public class ChatFragment extends Fragment implements ChatAdapter.OnChatInteract
                                 return; // Stop this chatOpenExecutor task early
                             }
                             // Use android.util.Base64 for decoding the Base64 string from Firebase (assuming this format)
-                            byte[] recipientPublicKeyBytes = android.util.Base64.decode(recipientPublicKeyBase64, android.util.Base64.DEFAULT);
+                            byte[] recipientPublicKeyBytes = Base64.decode(recipientPublicKeyBase64, Base64.DEFAULT);
                             recipientPublicKey = CryptoUtils.bytesToPublicKey(recipientPublicKeyBytes);
                             Log.d(TAG, "Recipient public key obtained for " + recipientUserId);
 
@@ -5670,7 +5792,8 @@ public class ChatFragment extends Fragment implements ChatAdapter.OnChatInteract
         Log.d(TAG, "Chat long clicked: " + chat.getUsername() + " (Other User ID: " + chat.getUserId() + ")");
         // Ensure chat entity is not null and has a valid partner ID and conversation ID, and is owned by the current user
         if (chat != null && !TextUtils.isEmpty(chat.getUserId()) && !TextUtils.isEmpty(chat.getConversationId()) && !TextUtils.isEmpty(chat.getOwnerUserId()) && chat.getOwnerUserId().equals(currentUserID)) { // Added conv ID check and owner check
-            showDeleteChatDialog(chat); // Call method to show the confirmation dialog
+            // *** MODIFIED: Call the new options dialog method ***
+            showChatAndReportOptionsDialog(chat); // Call method to show multiple options // Call method to show the confirmation dialog
         } else {
             Log.w(TAG, "Cannot show delete dialog, ChatEntity is null or has empty userId/conversationId/ownerId, or not owned by current user.");
             Toast.makeText(getContext(), "Error deleting chat.", Toast.LENGTH_SHORT).show();
@@ -5820,248 +5943,8 @@ public class ChatFragment extends Fragment implements ChatAdapter.OnChatInteract
                 }
                 // Decide if you still want to delete from Room even if Firebase fails? Probably not, for consistency.
             }
-        }); // End Firebase deletion listener
+        }); // End Firebase deletion listene
     }
-
-
-    // Method to manually refresh data (if needed, currently called by refresh action)
-    public void refreshData() {
-        Log.d(TAG,"Manual refresh triggered.");
-        // The existing Firebase listener should automatically update when data changes.
-        // If you want to force a re-sync on refresh, you could remove and re-add the listener.
-        // However, addValueEventListener generally stays active and updates automatically.
-        // A simple Toast indicating sync attempt is sufficient if the listener is always active.
-        if (isNetworkAvailable() && chatSummariesRef != null && currentUserID != null) { // Added currentUserID check
-            if (getContext() != null) {
-                Toast.makeText(getContext(), "Refreshing chats...", Toast.LENGTH_SHORT).show();
-            }
-            // The attachChatSummaryListener checks if a listener exists. If not, it attaches.
-            // If already attached, this call does nothing, but the listener *should* trigger
-            // on any data change in Firebase anyway.
-            // If you want a *full* re-fetch including users data, you might need a more specific sync method.
-            // For now, relying on the listener should be okay.
-            // attachChatSummaryListener(); // No need to re-attach if already attached unless listener was null
-        } else if (!isNetworkAvailable()) {
-            if (getContext() != null) {
-                Toast.makeText(getContext(), "Network unavailable. Cannot refresh.", Toast.LENGTH_SHORT).show();
-            }
-            // If offline, LiveData will still show cached data.
-        } else { // chatSummariesRef or currentUserID is null
-            Log.w(TAG, "Cannot refresh data: Firebase ref or user ID is null.");
-            if (getContext() != null) {
-                Toast.makeText(getContext(), "Error refreshing data.", Toast.LENGTH_SHORT).show();
-            }
-        }
-    }
-
-
-    /**
-     * Forces the chat list to re-render its current data from the LiveData's last value.
-     * Useful when decryption keys become available after the data was initially loaded.
-     * Assumes the LiveData's last value is still in the `chatListLiveData` object.
-     * This method should be called on the Main Thread.
-     */
-//    public void forceRefreshDisplay() {
-//        Log.d(TAG, "🟢 forceRefreshDisplay() called in ChatFragment.");
-//        // Ensure LiveData has a value and adapter exists
-//        if (chatListLiveData == null || chatListLiveData.getValue() == null || chatAdapter == null || currentUserID == null) {
-//            Log.w(TAG, "forceRefreshDisplay skipped: LiveData, value, adapter, or currentUserID is null.");
-//            // Ensure UI reflects locked state if user ID is null
-//            if (currentUserID == null) {
-//                showAuthenticationErrorUI();
-//            }
-//            Log.d(TAG, "✅ forceRefreshDisplay finished (skipped due to nulls).");
-//            return;
-//        }
-//
-//        List<ChatEntity> currentItems = chatListLiveData.getValue();
-//        Log.d(TAG, "forceRefreshDisplay triggered. Re-processing " + (currentItems != null ? currentItems.size() : 0) + " ChatEntity objects for owner " + currentUserID);
-//
-//        List<ChatEntity> processedChatList = new ArrayList<>();
-//        boolean isPrivateKeyAvailable = YourKeyManager.getInstance().isPrivateKeyAvailable(); // Check user's main private key state
-//
-//
-//        if (currentItems != null) {
-//            for (ChatEntity chat : currentItems) {
-//                if (chat == null) continue;
-//
-//                // Extract necessary fields from the original ChatEntity
-//                String encryptedLastMessage = chat.getLastMessage(); // This is the Base64 String from Room
-//                String conversationId = chat.getConversationId();
-//                String lastMessageType = chat.getLastMessageType();
-//                // Other fields (id, owner, userId, username, profileImage, timestamp, unreadCount) are copied later
-//
-//
-//                // This will be the string shown in the UI bubble, initialize as empty or placeholder
-//                String displayedLastMessagePreview = "";
-//
-//
-//                // Default placeholder based on type if content is empty or decryption fails
-//                String placeholder = "";
-//                if ("image".equals(lastMessageType)) placeholder = "[Image]";
-//                else if ("file".equals(lastMessageType)) placeholder = "[File]";
-//                else placeholder = ""; // Default for text or unknown
-//
-//
-//                boolean messageShouldBeEncrypted = ("text".equals(lastMessageType) || "image".equals(lastMessageType));
-//
-//                // --- Logic to determine what to display for the last message preview (Single Key) ---
-//
-//                // Handle system message type first (it's not encrypted text/image)
-//                if ("system_key_change".equals(lastMessageType)) {
-//                    displayedLastMessagePreview = encryptedLastMessage; // Stored content is the actual message text for system type
-//                    if (TextUtils.isEmpty(displayedLastMessagePreview)) {
-//                        displayedLastMessagePreview = "[System Message]"; // Fallback placeholder
-//                    }
-//                    //Log.d(TAG, "Preview Debug: Processing system_key_change message for chat " + conversationId);
-//                }
-//
-//
-//
-//                // Attempt decryption only IF it's a type that *should* be encrypted AND content exists AND keys are available
-//                else if (messageShouldBeEncrypted && !TextUtils.isEmpty(encryptedLastMessage) && isPrivateKeyAvailable) {
-//
-//                    // Get the *single* conversation key from KeyManager cache
-//                    SecretKey conversationAESKey = YourKeyManager.getInstance().getConversationKey(conversationId); // <<< Use single-key method
-//
-//                    if (conversationAESKey != null) { // Check if the key was successfully retrieved from cache
-//                        // Log.d(TAG, "Preview Debug: Conversation key found. Attempting decryption for chat " + conversationId);
-//                        try {
-//                            // Decode Base64 string to bytes using CryptoUtils.base64ToBytes (for crypto data)
-//                            byte[] encryptedBytesWithIV = CryptoUtils.base64ToBytes(encryptedLastMessage); // <<< Use CryptoUtils
-//                            if (encryptedBytesWithIV == null || encryptedBytesWithIV.length == 0) {
-//                                Log.w(TAG, "Preview Debug: Decoded encrypted bytes null/empty for preview in chat " + conversationId);
-//                                displayedLastMessagePreview = "[Invalid Encrypted Data]"; // Fallback placeholder
-//                            } else {
-//                                // Decrypt bytes using CryptoUtils.decryptMessageWithAES
-//                                String decryptedContent = CryptoUtils.decryptMessageWithAES(encryptedBytesWithIV, conversationAESKey); // <<< Use CryptoUtils
-//
-//                                // If decryption succeeds:
-//                                if ("text".equals(lastMessageType)) {
-//                                    int maxLength = 50; // Preview ki max length
-//                                    displayedLastMessagePreview = decryptedContent.length() > maxLength ?
-//                                            decryptedContent.substring(0, maxLength) + "..." :
-//                                            decryptedContent; // Use decrypted text or snippet
-//                                    // Log.d(TAG, "Last message preview decrypted successfully: " + displayedLastMessagePreview); // Avoid logging content
-//
-//                                } else if ("image".equals(lastMessageType)) {
-//                                    // For image previews, show placeholder in the list
-//                                    displayedLastMessagePreview = placeholder; // Placeholder like "[Image]"
-//
-//                                } else { // Should not happen based on outer if condition, but fallback
-//                                    displayedLastMessagePreview = "[Unknown Type - Decrypted]";
-//                                    Log.w(TAG, "Unexpected message type '" + lastMessageType + "' processed for decryption in chat " + conversationId);
-//                                }
-//                            } // End else (decoded bytes not null/empty)
-//
-//                        } catch (IllegalArgumentException e) { // Base64 decoding error (from Room data)
-//                            Log.e(TAG, "Preview Debug: Base64 decoding error decrypting preview for " + conversationId, e);
-//                            displayedLastMessagePreview = "[Invalid Encrypted Data]"; // Placeholder on Base64 error
-//                        } catch (Exception e) { // Catch decryption errors (wrong key, corrupt data, padding issues)
-//                            // This key *could* be the wrong key (if the other user reset theirs).
-//                            // In single-key model, we just show failure.
-//                            Log.w(TAG, "Preview Debug: Decryption FAILED with conversation key for chat " + conversationId + ". Exception: " + e.getClass().getSimpleName() + ". Showing failed placeholder.");
-//                            displayedLastMessagePreview = "[Encrypted Message - Failed]"; // Placeholder on crypto error with available key
-//                        }
-//                    } else {
-//                        // Private key available, but the specific conversation key is NOT in KeyManager's cache.
-//                        // This indicates the key needs to be loaded by clicking the chat.
-//                        // Log.d(TAG, "Preview Debug: User's private key available, but Conversation key NOT in KeyManager cache for chat " + conversationId + ". Cannot decrypt preview.");
-//                        displayedLastMessagePreview = "[Tap to Load Chat]"; // Placeholder indicating key needs loading
-//                    }
-//
-//                } else if (messageShouldBeEncrypted && !TextUtils.isEmpty(encryptedLastMessage) && !isPrivateKeyAvailable) { // Keys are simply NOT available at all
-//                    // Content exists and should be encrypted, but the user's main private key is missing/unavailable (account locked)
-//                    // Log.d(TAG, "Preview Debug: Message in " + conversationId + " is encrypted, but User's Private Key is NOT available. Showing [Locked] placeholder.");
-//                    displayedLastMessagePreview = "[Locked]"; // Placeholder indicating account needs unlocking
-//
-//                } else {
-//                    // Default case: Not expected to be encrypted (file, system message), OR content is empty.
-//                    // Display the content as it was stored in Room (Base64 for image/file, or plaintext for system)
-//                    displayedLastMessagePreview = encryptedLastMessage; // Use the content stored in Room
-//                    if (TextUtils.isEmpty(displayedLastMessagePreview)) {
-//                        displayedLastMessagePreview = placeholder; // Fallback to a type-based placeholder if stored content is empty
-//                    }
-//                    // Log.d(TAG, "Preview Debug: Displaying stored content as is for chat " + conversationId + " (Type: " + lastMessageType + ")");
-//                }
-//                // --- End Logic ---
-//
-//
-//                // Create a NEW ChatEntity object for the adapter with processed content
-//                ChatEntity processedChat = new ChatEntity();
-//                // Copy all fields from the original chat entity, but set the processed message
-//                processedChat.setId(chat.getId()); // Make sure to copy Room auto-generated ID
-//                processedChat.setOwnerUserId(chat.getOwnerUserId()); // Keep the owner ID
-//                processedChat.setUserId(chat.getUserId()); // Keep the chat partner ID
-//                processedChat.setConversationId(chat.getConversationId()); // Keep the conversation ID
-//                processedChat.setUsername(chat.getUsername()); // Keep the username
-//                processedChat.setProfileImage(chat.getProfileImage()); // Keep the profile image
-//                processedChat.setLastMessage(displayedLastMessagePreview); // *** Set the PROCESSED/DECRYPTED preview content ***
-//                processedChat.setTimestamp(chat.getTimestamp()); // Keep the timestamp
-//                processedChat.setUnreadCount(chat.getUnreadCount()); // Keep the unread count
-//                processedChat.setLastMessageType(chat.getLastMessageType());
-//                // If ChatEntity has partnerKeysChanged, copy it:
-//                // processedChat.setPartnerKeysChanged(chat.isPartnerKeysChanged());
-//
-//
-//                processedChatList.add(processedChat); // Add the processed entity to the list for the adapter
-//            }
-//        }
-//
-//        // Sort the list by timestamp DESC (latest message first). Ensure this matches your DAO query ORDER BY.
-//        // If your DAO query already sorts correctly, this step is redundant but safe.
-//        if (processedChatList.size() > 1) { // Only sort if more than one item
-//            Collections.sort(processedChatList, (c1, c2) -> Long.compare(c2.getTimestamp(), c1.getTimestamp()));
-//        }
-//
-//
-//        // Submit the list of ChatEntity with processed last messages to the adapter
-//        if (chatAdapter != null) {
-//            // Use submitList (more efficient with DiffUtil if implemented in adapter). Pass a *copy*.
-//            // Using ArrayList<>(processedChatList) ensures a new list is passed, preventing issues with adapter's internal list reference.
-//            chatAdapter.submitList(new ArrayList<>(processedChatList));
-//            Log.d(TAG, "Submitted " + processedChatList.size() + " processed chats to adapter in forceRefreshDisplay.");
-//        } else {
-//            Log.e(TAG, "ChatAdapter is null in forceRefreshDisplay, cannot submit list.");
-//        }
-//
-//
-//        // Update UI visibility based on the final list size
-//        if (processedChatList.size() > 0) { // Check size > 0 for non-empty list
-//            if (privateChatsList != null) privateChatsList.setVisibility(View.VISIBLE); // Safety check
-//            if (noChatsText != null) noChatsText.setVisibility(View.GONE); // Safety check
-//            // Show search view only if there are chats to search
-//            if (searchView != null) searchView.setVisibility(View.VISIBLE); // Safety check
-//            // Log.d(TAG, "Chat list visible after forceRefreshDisplay.");
-//        } else {
-//            if (privateChatsList != null) privateChatsList.setVisibility(View.GONE); // Safety check
-//            if (noChatsText != null) { // Safety check
-//                noChatsText.setVisibility(View.VISIBLE);
-//                noChatsText.setText("No chats yet"); // Message when list is empty
-//            }
-//            // Hide search view if there are no chats
-//            if (searchView != null) searchView.setVisibility(View.GONE); // Safety check
-//            // Log.d(TAG, "No chats found after forceRefreshDisplay, showing No chats text.");
-//        }
-//
-//        // Re-apply search filter if there's an active query
-//        // The adapter's filter method should work on the list containing *displayed* previews
-//        if (searchView != null && chatAdapter != null) {
-//            String currentQuery = searchView.getQuery().toString();
-//            if (!TextUtils.isEmpty(currentQuery)) { // Check if query is not empty
-//                // Log.d(TAG, "Applying search filter after force refresh: '" + currentQuery + "'");
-//                // Ensure adapter's filter method works with the list containing processed previews
-//                // The adapter's filter logic should compare the *displayed* last message preview text
-//                chatAdapter.filter(currentQuery);
-//            }
-//        } else {
-//            Log.w(TAG, "SearchView or ChatAdapter is null in forceRefreshDisplay, cannot re-apply filter.");
-//        }
-//        Log.d(TAG, "✅ forceRefreshDisplay finished.");
-//    }
-
-
-
     public void forceRefreshDisplay() {
         Log.d(TAG, "🟢 forceRefreshDisplay() called in ChatFragment.");
         // Ensure LiveData has a value and adapter exists
@@ -6184,10 +6067,10 @@ public class ChatFragment extends Fragment implements ChatAdapter.OnChatInteract
                             Log.e(TAG, "Preview Debug: Base64 decoding error decrypting preview for conv " + conversationId, e);
                             displayedContent = "[Invalid Encrypted Data]"; // Placeholder on Base64 error
                             processingOutcome = "Base64 Decoding Error";
-                        } catch (javax.crypto.BadPaddingException |
-                                 javax.crypto.IllegalBlockSizeException |
-                                 java.security.InvalidKeyException | // Catch InvalidKeyException if the key is wrong
-                                 java.security.InvalidAlgorithmParameterException e) {
+                        } catch (BadPaddingException |
+                                 IllegalBlockSizeException |
+                                 InvalidKeyException |// Catch InvalidKeyException if the key is wrong
+                                 InvalidAlgorithmParameterException e) {
                             // Crypto decryption failed for THIS key! (e.g., wrong key version if multiple existed, or data corruption)
                             // In the single-key model, this means the only key we have is wrong or data is corrupt.
                             Log.w(TAG, "Preview Debug: Decryption FAILED with conversation key for conv " + conversationId + ". Exception: " + e.getClass().getSimpleName());
@@ -6374,6 +6257,137 @@ public class ChatFragment extends Fragment implements ChatAdapter.OnChatInteract
     }
 
 
+
+
+
+    // --- Method to Show Chat and Report Options Dialog on Long Press ---
+    private void showChatAndReportOptionsDialog(ChatEntity chat) {
+        // Ensure context is available and chat object is valid and owned by current user before showing dialog
+        if (getContext() == null || chat == null || TextUtils.isEmpty(chat.getUserId()) || TextUtils.isEmpty(chat.getConversationId()) || TextUtils.isEmpty(chat.getOwnerUserId()) || !chat.getOwnerUserId().equals(currentUserID)) {
+            Log.w(TAG, "Cannot show chat options dialog, ChatEntity invalid or not owned by current user.");
+            Toast.makeText(getContext(), "Error performing action.", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        Log.d(TAG, "Showing chat options dialog for chat with " + chat.getUsername() + " (Partner ID: " + chat.getUserId() + ")");
+
+        final CharSequence[] options = {"Report " + chat.getUsername(), "Delete Chat", "View Profile"}; // Options array
+
+                final ChatEntity chatEntityForDialog = chat;
+
+        new AlertDialog.Builder(getContext()) // Use getContext()
+                .setTitle("Chat Options") // Dialog title
+                // Define the list of options in the dialog
+                .setItems(options, (dialog, which) -> {
+                    // Handle option clicks based on the selected index (which)
+                    switch (which) {
+                        case 0: // Index 0: "Report User" option clicked
+                            Log.d(TAG, "Report User option clicked for user: " + chat.getUserId());
+                            // *** Call the confirmation dialog for reporting ***
+                            showReportConfirmationDialog(chat);
+                            break;
+                        case 1: // Index 1: "Delete Chat" option clicked
+                            Log.d(TAG, "Delete Chat option clicked for chat with: " + chat.getUserId());
+                            // *** Call the existing delete logic ***
+//                            deleteChat(chat.getUserId(), chat.getConversationId()); // Pass partner ID and conversation ID
+                            showDeleteChatDialog(chatEntityForDialog);
+                            break;
+                        case 2:
+//                            Intent profileIntent = new Intent(ChatFragment.this, ProfileUserInfoActivity.class);
+//                            // Pass the receiver's user ID using the key expected by ProfileUserInfoActivity
+//                            profileIntent.putExtra("visit_user_id", messageReceiverID);
+//                            startActivity(profileIntent);
+//                            break;
+                        // Add more cases for other options if needed
+                        default:
+                            throw new IllegalStateException("Unexpected value: " + which);
+                    }
+                })
+                // No NegativeButton needed if using setItems, clicking outside dismisses it.
+                .show(); // Display the dialog
+    }
+
+
+    // --- Method to Show Report Confirmation Dialog ---
+    private void showReportConfirmationDialog(ChatEntity chatToReport) {
+        // Ensure context is available and chat object is valid and owned by current user
+        if (getContext() == null || chatToReport == null || TextUtils.isEmpty(chatToReport.getUserId()) || !chatToReport.getOwnerUserId().equals(currentUserID)) {
+            Log.w(TAG, "Cannot show report confirmation dialog, ChatEntity invalid or not owned by current user.");
+            Toast.makeText(getContext(), "Error reporting user.", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        final String reportedUserId = chatToReport.getUserId(); // The ID of the user being reported
+        final String reportedUsername = chatToReport.getUsername(); // The name of the user being reported
+        final String reportingUserId = currentUserID; // The ID of the user doing the reporting (current user)
+
+        // Add a safety check: A user cannot report themselves.
+        if (reportedUserId.equals(reportingUserId)) {
+            Log.w(TAG, "User attempted to report themselves: " + reportingUserId);
+            Toast.makeText(getContext(), "You cannot report yourself.", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        Log.d(TAG, "Showing report confirmation dialog for user: " + reportedUsername + " (ID: " + reportedUserId + ")");
+
+        new AlertDialog.Builder(getContext()) // Use getContext()
+                .setTitle("Confirm Report") // Dialog title
+                .setMessage("Are you sure you want to report " + reportedUsername + "? Repeated or malicious reports may result in action against your account.") // Confirmation message
+                .setPositiveButton("Report", (dialog, which) -> {
+                    Log.d(TAG, "Report confirmed for user: " + reportedUserId + " by user: " + reportingUserId);
+                    // *** Call the method to actually report the user to Firebase ***
+                    reportUser(reportedUserId, reportingUserId);
+                })
+                .setNegativeButton("Cancel", (dialog, which) -> {
+                    dialog.dismiss(); // Dismiss the dialog if cancelled
+                    Log.d(TAG, "Report confirmation cancelled for user: " + reportedUserId);
+                })
+                .show(); // Display the dialog
+    }
+
+
+    // --- Method to Report a User to Firebase ---
+// This method writes the report to the /userReports node.
+// Automatic blocking logic will be in Firebase Cloud Functions.
+    private void reportUser(String reportedUserId, String reportingUserId) {
+        // Ensure IDs and rootRef are valid before attempting Firebase ops
+        if (TextUtils.isEmpty(reportedUserId) || TextUtils.isEmpty(reportingUserId) || rootRef == null) {
+            Log.e(TAG, "reportUser: reportedUserId, reportingUserId, or rootRef is null/empty. Cannot report.");
+            Toast.makeText(getContext(), "Error reporting user.", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        Log.d(TAG, "Submitting report in Firebase: Reported User ID=" + reportedUserId + ", Reporting User ID=" + reportingUserId);
+
+        // Path for the report: /userReports/{reportedUserId}/{reportingUserId}
+        DatabaseReference reportRef = rootRef.child("userReports") // Use lowercase 'u' as seen in your Firebase screenshot
+                .child(reportedUserId)
+                .child(reportingUserId);
+
+        // Data to save for the report. Using a timestamp is useful for tracking *when* a user was reported.
+        // Using ServerValue.TIMESTAMP ensures accuracy regardless of client device time.
+        Map<String, Object> reportData = new HashMap<>();
+        reportData.put("timestamp", ServerValue.TIMESTAMP);
+        // Optional: Add reporting user's name if you fetched it (senderUserName), but UID is sufficient for logic
+        // reportData.put("reportingUsername", senderUserName != null ? senderUserName : "Unknown");
+
+        // Write the report data to Firebase
+        reportRef.setValue(reportData) // Use setValue to ensure unique key based on reportingUserId
+                .addOnSuccessListener(aVoid -> {
+                    // Firebase write successful
+                    Log.d(TAG, "Report successfully submitted for user: " + reportedUserId + " by: " + reportingUserId);
+                    Toast.makeText(getContext(), "User reported. Thank you for your feedback.", Toast.LENGTH_SHORT).show();
+
+                    // Note: The automatic blocking logic is handled by Firebase Cloud Functions
+                    // listening to writes under /userReports/{reportedUserId}.
+
+                })
+                .addOnFailureListener(e -> {
+                    // Firebase write failed
+                    Log.e(TAG, "Failed to submit report for user: " + reportedUserId + " by: " + reportingUserId, e);
+                    Toast.makeText(getContext(), "Failed to submit report. Please try again.", Toast.LENGTH_SHORT).show();
+                });
+    }
 
 
 }

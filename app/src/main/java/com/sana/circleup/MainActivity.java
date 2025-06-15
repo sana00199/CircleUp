@@ -1,5 +1,6 @@
 package com.sana.circleup;
 
+import android.annotation.SuppressLint;
 import android.app.ProgressDialog;
 import android.content.Context;
 import android.content.Intent;
@@ -106,6 +107,9 @@ public class MainActivity extends AppCompatActivity {
 
     private ConversationKeyDao conversationKeyDao;
     private ChildEventListener keyChangeNotificationListener; // NEW member
+
+    private DatabaseReference currentUserBlockedStatusRef; // Reference to /Users/{uid}/isBlocked
+    private ValueEventListener blockedStatusListener;
 
 
 
@@ -236,6 +240,7 @@ public class MainActivity extends AppCompatActivity {
 
     // No need for onRestoreInstanceState, handling is done in onCreate
 
+    @SuppressLint("RestrictedApi")
     @Override
     protected void onStart() {
         super.onStart();
@@ -248,6 +253,75 @@ public class MainActivity extends AppCompatActivity {
         } else {
             currentUserID = currentUser.getUid();
             Log.d(TAG, "onStart: Firebase user authenticated. UID: " + currentUserID);
+
+
+
+            // *** NEW: Attach Real-time Listener for isBlocked status ***
+            if (currentUserBlockedStatusRef == null && blockedStatusListener == null) { // Check if listener is not already set up
+                // Get a reference to the specific user's isBlocked field
+                currentUserBlockedStatusRef = RootRef.child("Users") // Use your RootRef member variable
+                        .child(currentUserID)
+                        .child("isBlocked");
+
+                blockedStatusListener = new ValueEventListener() {
+                    @Override
+                    public void onDataChange(@NonNull DataSnapshot snapshot) {
+                        // This is triggered whenever the 'isBlocked' value changes for the current user
+                        // It also triggers once initially when the listener is attached
+                        Log.d(TAG, "Blocked status listener onDataChange triggered in MainActivity.");
+
+                        Boolean isBlockedBoolean = snapshot.getValue(Boolean.class);
+                        boolean isBlocked = isBlockedBoolean != null && isBlockedBoolean; // Safely get boolean value
+
+                        if (isBlocked) {
+                            // Account has been blocked by admin!
+                            Log.d(TAG, "Account isBlocked status changed to TRUE. Initiating logout from MainActivity.");
+                            // --- Perform Logout and Redirect ---
+                            // Make sure to dismiss any dialogs if showing
+                            if (keyLoadProgressDialog != null && keyLoadProgressDialog.isShowing()) {
+                                keyLoadProgressDialog.dismiss();
+                            }
+                            // Show a final toast on the main thread
+                            runOnUiThread(() -> {
+                                Toast.makeText(MainActivity.this, "Your account has been disabled by an administrator.Contact at circleup0719@gmail.com", Toast.LENGTH_LONG).show();
+                            });
+
+                            // Perform the actual logout (signs out from Firebase Auth)
+                            LoggingOut(); // Call your existing LoggingOut method which handles Firebase sign out and redirect
+                            // Note: LoggingOut method already clears keys, local storage, and redirects.
+
+                            // ------------------------------------
+                        } else {
+                            // Account is NOT blocked (or has been re-enabled)
+                            Log.d(TAG, "Account isBlocked status is FALSE or changed from TRUE to FALSE.");
+                            // User remains logged in and can continue using the app.
+                            // If a user was blocked and then re-enabled *while* in the app,
+                            // they will stay logged in.
+                        }
+                    }
+
+                    @Override
+                    public void onCancelled(@NonNull DatabaseError error) {
+                        // Handle listener cancellation or error (e.g., network issues, security rules)
+                        Log.e(TAG, "Firebase blocked status listener cancelled in MainActivity.", error.toException());
+                        // Decide how to handle this - perhaps show a warning, but don't necessarily log out
+                        // immediately unless you are sure the status is unrecoverable.
+                        runOnUiThread(() -> { // Show toast on main thread
+                            Toast.makeText(MainActivity.this, "Warning: Could not monitor account status: " + error.getMessage(), Toast.LENGTH_SHORT).show();
+                        });
+                    }
+                };
+
+                // Attach the listener
+                currentUserBlockedStatusRef.addValueEventListener(blockedStatusListener);
+                Log.d(TAG, "Attached blocked status listener to: " + currentUserBlockedStatusRef.getPath());
+            } else {
+                Log.d(TAG, "Blocked status listener already attached or cannot be attached.");
+            }
+            // *** END NEW LISTENER SETUP ***
+
+
+
 
             if (YourKeyManager.getInstance().isPrivateKeyAvailable()) {
                 Log.d(TAG, "onStart: Private key is available in KeyManager. Proceeding with MainActivity setup.");
@@ -518,14 +592,24 @@ public class MainActivity extends AppCompatActivity {
     protected void onStop() {
         super.onStop();
         Log.d(TAG, "MainActivity onStop.");
+
+        // *** NEW: Remove the blocked status listener ***
+        if (currentUserBlockedStatusRef != null && blockedStatusListener != null) {
+            currentUserBlockedStatusRef.removeEventListener(blockedStatusListener);
+            Log.d(TAG, "Removed blocked status listener.");
+        }
+        // *** END REMOVE LISTENER ***
+
         removeKeyChangeNotificationListener();
         // Only set offline if user was authenticated AND at least public key was available
         // Rely on YourKeyManager state, which is cleared on explicit logout/delete.
-        if (auth.getCurrentUser() != null && YourKeyManager.getInstance().getUserPublicKey() != null) {
-            Log.d(TAG, "onStop: User is logged in and keys available. Setting state to offline.");
+        if (isFinishing() && auth.getCurrentUser() != null && YourKeyManager.getInstance().getUserPublicKey() != null) {
+            Log.d(TAG, "onStop: Activity is finishing. User is logged in and keys available. Setting state to offline.");
+            // Note: update state might be unreliable in onDestroy, especially if app process is killed abruptly.
+            // onDisconnect is more reliable for sudden exits. But good practice to set it here too.
             updateUserState("offline");
         } else {
-            Log.d(TAG, "onStop: User not fully logged in or keys not loaded. Skipping offline status update.");
+            Log.d(TAG, "onStop: Activity is not finishing OR user not fully logged in/keys not loaded. Skipping offline status update.");
         }
     }
 
@@ -676,99 +760,167 @@ public class MainActivity extends AppCompatActivity {
 
 
 
-    private void checkUserRoleAndNavigate(String userId) {
-        Log.d(TAG, "checkUserRoleAndNavigate called for user: " + userId);
+//    private void checkUserRoleAndNavigate(String userId) {
+//        Log.d(TAG, "checkUserRoleAndNavigate called for user: " + userId);
+//
+//        // --- MODIFIED CHECK: ONLY check if Firebase Auth user is null ---
+//        // The availability of Public/Private keys should NOT prevent entry to MainActivity;
+//        // it should only disable secure features within the app.
+//        FirebaseUser currentUser = auth.getCurrentUser();
+//        if (currentUser == null) {
+//            Log.e(TAG, "checkUserRoleAndNavigate: Firebase Auth user is null! This indicates a critical authentication state error. Forcing re-login.");
+//            Toast.makeText(this, "Authentication state missing. Please log in again.", Toast.LENGTH_LONG).show();
+//            // Critical error: User is not authenticated. Clear state before redirect.
+//            // Clear local keys associated with this (potentially null) user ID just in case.
+//            if (userId != null) { // Use the potentially known userId before clearing Auth state
+//                SecureKeyStorageUtil.clearAllSecureKeys(MainActivity.this, userId);
+//            } else {
+//                // If userId is somehow null here, attempt to clear symmetric key globally as a fallback
+//                SecureKeyStorageUtil.clearSymmetricKey(MainActivity.this);
+//            }
+//            YourKeyManager.getInstance().clearKeys(); // Ensure KeyManager is empty
+//            // Also clear RememberMe preference on critical authentication failure.
+//            SharedPreferences prefs = getSharedPreferences("CircleUpPrefs", MODE_PRIVATE);
+//            prefs.edit().putBoolean("RememberMe", false).apply();
+//            auth.signOut(); // Sign out from Firebase Auth
+//            sendUserToLoginActivity(); // Redirect back to Login
+//            return; // Stop execution
+//        }
+//
+//        // Proceed to fetch user data from the database to check role and basic profile existence.
+//        // If user data does not exist, that's also a critical error for an authenticated user.
+//        DatabaseReference userRef = FirebaseDatabase.getInstance().getReference("Users").child(userId);
+//
+//        userRef.get().addOnCompleteListener(task -> {
+//            // Ensure progress dialog is dismissed here, regardless of success or failure below
+//            // Use the member dialog declared in MainActivity
+//            if (keyLoadProgressDialog != null && keyLoadProgressDialog.isShowing()) {
+//                keyLoadProgressDialog.dismiss();
+//            }
+//
+//            if (task.isSuccessful() && task.getResult().exists()) {
+//                // User data exists in DB. Proceed with role check.
+//                DataSnapshot snapshot = task.getResult();
+//                String role = snapshot.child("role").getValue(String.class); // Assuming 'role' field exists
+//
+//                // Log the key state *after* successful user data load and role check for informational purposes
+//                Log.d(TAG, "User data loaded, proceeding with role check. KeyManager state: Private Available=" + YourKeyManager.getInstance().isPrivateKeyAvailable() + ", Public Key Available=" + (YourKeyManager.getInstance().getUserPublicKey() != null));
+//
+//
+//                if (role != null && !role.isEmpty()) {
+//                    Log.d(TAG, "User role found: " + role + " for UID: " + userId);
+//                    if (role.equals("admin")) {
+//                        // If admin, navigate to admin dashboard and finish MainActivity
+//                        Log.d(TAG, "User is Admin. Navigating to Admin Dashboard.");
+//                        Toast.makeText(this, "this is not admin apk", Toast.LENGTH_SHORT).show();
+////                        Intent intent = new Intent(MainActivity.this, Login.class);
+////                        intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
+////                        startActivity(intent);
+////                        finish(); // Finish MainActivity
+//                    } else { // Role is "user" or something else that is not admin
+//                        // User is a standard user. They remain in MainActivity.
+//                        // The UI is already being set up (or is complete) by setupMainActivityUIAndProceed.
+//                        // Secure features in fragments, drawer, buttons will be enabled/disabled
+//                        // based on YourKeyManager.isPrivateKeyAvailable() and hasConversationKey() checks
+//                        // throughout the app. No explicit navigation or finish() needed here.
+//                        Log.d(TAG, "User is not Admin. Staying in Main Activity. Secure features will be enabled/disabled based on key availability.");
+//                        // The LiveData observers and UI logic in fragments (like ChatFragment)
+//                        // will adapt to the current state of YourKeyManager.
+//                    }
+//                } else {
+//                    // Role is missing for an authenticated user with data - Treat as critical error.
+//                    Log.e(TAG, "User role not found or is empty for UID: " + userId + ". Treating as critical error and logging out.");
+//                    Toast.makeText(MainActivity.this, "User role data missing. Please contact support. Logging out.", Toast.LENGTH_LONG).show();
+//                    // Log out and redirect
+//                    auth.signOut();
+//                    if (userId != null) SecureKeyStorageUtil.clearAllSecureKeys(MainActivity.this, userId); // Clear local data for user
+//                    YourKeyManager.getInstance().clearKeys(); // Clear KeyManager
+//                    SharedPreferences prefs = getSharedPreferences("CircleUpPrefs", MODE_PRIVATE);
+//                    prefs.edit().putBoolean("RememberMe", false).apply();
+//                    sendUserToLoginActivity(); // Redirect to Login
+//                }
+//            } else {
+//                // User data not found in DB for an authenticated user - Treat as critical error.
+//                Log.e(TAG, "User data not found in DB for UID: " + userId + " during role check. Treating as critical error and logging out.");
+//                Toast.makeText(MainActivity.this, "User data not found! Please contact support. Logging out.", Toast.LENGTH_LONG).show();
+//                // Log out and redirect
+//                auth.signOut();
+//                if (userId != null) SecureKeyStorageUtil.clearAllSecureKeys(MainActivity.this, userId); // Clear local data for user
+//                YourKeyManager.getInstance().clearKeys(); // Clear KeyManager
+//                SharedPreferences prefs = getSharedPreferences("CircleUpPrefs", MODE_PRIVATE);
+//                prefs.edit().putBoolean("RememberMe", false).apply();
+//                sendUserToLoginActivity(); // Redirect to Login
+//            }
+//        });
+//    }
 
-        // --- MODIFIED CHECK: ONLY check if Firebase Auth user is null ---
-        // The availability of Public/Private keys should NOT prevent entry to MainActivity;
-        // it should only disable secure features within the app.
-        FirebaseUser currentUser = auth.getCurrentUser();
-        if (currentUser == null) {
-            Log.e(TAG, "checkUserRoleAndNavigate: Firebase Auth user is null! This indicates a critical authentication state error. Forcing re-login.");
-            Toast.makeText(this, "Authentication state missing. Please log in again.", Toast.LENGTH_LONG).show();
-            // Critical error: User is not authenticated. Clear state before redirect.
-            // Clear local keys associated with this (potentially null) user ID just in case.
-            if (userId != null) { // Use the potentially known userId before clearing Auth state
-                SecureKeyStorageUtil.clearAllSecureKeys(MainActivity.this, userId);
-            } else {
-                // If userId is somehow null here, attempt to clear symmetric key globally as a fallback
-                SecureKeyStorageUtil.clearSymmetricKey(MainActivity.this);
-            }
-            YourKeyManager.getInstance().clearKeys(); // Ensure KeyManager is empty
-            // Also clear RememberMe preference on critical authentication failure.
-            SharedPreferences prefs = getSharedPreferences("CircleUpPrefs", MODE_PRIVATE);
-            prefs.edit().putBoolean("RememberMe", false).apply();
-            auth.signOut(); // Sign out from Firebase Auth
-            sendUserToLoginActivity(); // Redirect back to Login
-            return; // Stop execution
-        }
-
-        // Proceed to fetch user data from the database to check role and basic profile existence.
-        // If user data does not exist, that's also a critical error for an authenticated user.
-        DatabaseReference userRef = FirebaseDatabase.getInstance().getReference("Users").child(userId);
-
-        userRef.get().addOnCompleteListener(task -> {
-            // Ensure progress dialog is dismissed here, regardless of success or failure below
-            // Use the member dialog declared in MainActivity
-            if (keyLoadProgressDialog != null && keyLoadProgressDialog.isShowing()) {
-                keyLoadProgressDialog.dismiss();
-            }
-
-            if (task.isSuccessful() && task.getResult().exists()) {
-                // User data exists in DB. Proceed with role check.
-                DataSnapshot snapshot = task.getResult();
-                String role = snapshot.child("role").getValue(String.class); // Assuming 'role' field exists
-
-                // Log the key state *after* successful user data load and role check for informational purposes
-                Log.d(TAG, "User data loaded, proceeding with role check. KeyManager state: Private Available=" + YourKeyManager.getInstance().isPrivateKeyAvailable() + ", Public Key Available=" + (YourKeyManager.getInstance().getUserPublicKey() != null));
 
 
-                if (role != null && !role.isEmpty()) {
-                    Log.d(TAG, "User role found: " + role + " for UID: " + userId);
-                    if (role.equals("admin")) {
-                        // If admin, navigate to admin dashboard and finish MainActivity
-                        Log.d(TAG, "User is Admin. Navigating to Admin Dashboard.");
-                        Toast.makeText(this, "this is not admin apk", Toast.LENGTH_SHORT).show();
-//                        Intent intent = new Intent(MainActivity.this, Login.class);
-//                        intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
-//                        startActivity(intent);
-//                        finish(); // Finish MainActivity
-                    } else { // Role is "user" or something else that is not admin
-                        // User is a standard user. They remain in MainActivity.
-                        // The UI is already being set up (or is complete) by setupMainActivityUIAndProceed.
-                        // Secure features in fragments, drawer, buttons will be enabled/disabled
-                        // based on YourKeyManager.isPrivateKeyAvailable() and hasConversationKey() checks
-                        // throughout the app. No explicit navigation or finish() needed here.
-                        Log.d(TAG, "User is not Admin. Staying in Main Activity. Secure features will be enabled/disabled based on key availability.");
-                        // The LiveData observers and UI logic in fragments (like ChatFragment)
-                        // will adapt to the current state of YourKeyManager.
-                    }
-                } else {
-                    // Role is missing for an authenticated user with data - Treat as critical error.
-                    Log.e(TAG, "User role not found or is empty for UID: " + userId + ". Treating as critical error and logging out.");
-                    Toast.makeText(MainActivity.this, "User role data missing. Please contact support. Logging out.", Toast.LENGTH_LONG).show();
-                    // Log out and redirect
-                    auth.signOut();
-                    if (userId != null) SecureKeyStorageUtil.clearAllSecureKeys(MainActivity.this, userId); // Clear local data for user
-                    YourKeyManager.getInstance().clearKeys(); // Clear KeyManager
-                    SharedPreferences prefs = getSharedPreferences("CircleUpPrefs", MODE_PRIVATE);
-                    prefs.edit().putBoolean("RememberMe", false).apply();
-                    sendUserToLoginActivity(); // Redirect to Login
-                }
-            } else {
-                // User data not found in DB for an authenticated user - Treat as critical error.
-                Log.e(TAG, "User data not found in DB for UID: " + userId + " during role check. Treating as critical error and logging out.");
-                Toast.makeText(MainActivity.this, "User data not found! Please contact support. Logging out.", Toast.LENGTH_LONG).show();
-                // Log out and redirect
-                auth.signOut();
-                if (userId != null) SecureKeyStorageUtil.clearAllSecureKeys(MainActivity.this, userId); // Clear local data for user
-                YourKeyManager.getInstance().clearKeys(); // Clear KeyManager
-                SharedPreferences prefs = getSharedPreferences("CircleUpPrefs", MODE_PRIVATE);
-                prefs.edit().putBoolean("RememberMe", false).apply();
-                sendUserToLoginActivity(); // Redirect to Login
-            }
-        });
+// Inside MainActivity.java class:
+
+private void checkUserRoleAndNavigate(String userId) {
+    Log.d(TAG, "checkUserRoleAndNavigate called in MainActivity for user: " + userId);
+    // In MainActivity, the user has already passed login checks in Login.java.
+    // This check is less for security blocking and more for verifying data/role.
+    // The critical ADMIN role check that prevents login to *this* app is done ONLY in Login.java.
+
+    // Check if Firebase Auth user is present (should be, but defensive).
+    FirebaseUser currentUser = auth.getCurrentUser();
+    if (currentUser == null || TextUtils.isEmpty(userId) || !currentUser.getUid().equals(userId)) {
+        Log.e(TAG, "checkUserRoleAndNavigate (MainActivity): Firebase Auth user missing or ID mismatch! Forcing re-login.");
+        Toast.makeText(this, "Authentication state mismatch. Please log in again.", Toast.LENGTH_LONG).show();
+        // Critical error: User is not authenticated properly. Clear state before redirect.
+        SecureKeyStorageUtil.clearAllSecureKeys(MainActivity.this, userId); // Use potentially valid userId
+        YourKeyManager.getInstance().clearKeys();
+        SharedPreferences prefs = getSharedPreferences("CircleUpPrefs", MODE_PRIVATE);
+        prefs.edit().putBoolean("RememberMe", false).apply();
+        auth.signOut();
+        sendUserToLoginActivity(); // Redirect back to Login
+        return;
     }
+
+    // Fetch user data to ensure the user node exists and get the role for potential logging.
+    DatabaseReference userRef = FirebaseDatabase.getInstance().getReference("Users").child(userId);
+
+    userRef.get().addOnCompleteListener(task -> {
+        // Progress dialog is dismissed by setupMainActivityUIAndProceed before this.
+        // No need to dismiss here.
+
+        if (task.isSuccessful() && task.getResult().exists()) {
+            DataSnapshot snapshot = task.getResult();
+            String role = snapshot.child("role").getValue(String.class);
+
+            // Log the outcome for informational purposes
+            if (role != null && role.equals("admin")) {
+                // theoretically, an admin user should NEVER reach here after the fix in Login.java.
+                // If they do, it indicates a serious flow/logic error.
+                Log.e(TAG, "checkUserRoleAndNavigate (MainActivity): Admin user detected in MainActivity! This should not happen. User UID: " + userId);
+                Toast.makeText(this, "Security Error: Detected Admin account in user app. Logging out.", Toast.LENGTH_LONG).show();
+                // Force logout as a failsafe
+                LoggingOut(); // Use your existing logout method
+            } else if (role != null && role.equals("user")) {
+                // Standard user - continue with normal app flow.
+                Log.d(TAG, "checkUserRoleAndNavigate (MainActivity): User is standard user. Continuing with Main Activity UI.");
+                // No explicit navigation or finish() needed. The UI is already set up by setupMainActivityUIAndProceed.
+            } else {
+                // Role is missing, empty, or something unexpected (not "admin" or "user")
+                Log.w(TAG, "checkUserRoleAndNavigate (MainActivity): User role is missing, empty, or invalid ('" + role + "') for UID: " + userId + ". User data valid, but role is ambiguous.");
+                // Decide how strict to be. If a valid user node exists but role is weird, maybe let them in but log.
+                // For now, just log and let them continue, assuming the Login checks were more strict.
+            }
+
+            // KeyManager state is already set by attemptSecureKeyLoad before this method runs.
+            // UI based on key state is handled by fragments' LiveData observers.
+
+        } else {
+            // User data not found in DB for an authenticated user - Critical error in MainActivity.
+            Log.e(TAG, "checkUserRoleAndNavigate (MainActivity): User data not found in DB for UID: " + userId + ". This indicates a critical data inconsistency after login. Logging out.");
+            Toast.makeText(MainActivity.this, "User data missing post-login! Please contact support. Logging out.", Toast.LENGTH_LONG).show();
+            // Force logout
+            LoggingOut(); // Use your existing logout method
+        }
+    });
+}
 
 
     private void setupNavigationHeader() {
@@ -1480,6 +1632,8 @@ public class MainActivity extends AppCompatActivity {
                 sendUserToLoginActivity(); // Redirect on Firebase Auth deletion failure
             }
         });
+
+        FirebaseAuth.getInstance().getCurrentUser().delete();
     }
 
 
