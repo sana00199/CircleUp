@@ -5,21 +5,6 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:orientation="vertical">
 
-<!--    -->
-<!--    <FrameLayout-->
-<!--        android:layout_width="match_parent"-->
-<!--        android:layout_height="match_parent"-->
-<!--        android:id="@+id/container"-->
-<!--        />-->
-
-<!--    <com.google.android.material.bottomnavigation.BottomNavigationView-->
-<!--        android:id="@+id/bottomNavigation"-->
-<!--        android:layout_width="match_parent"-->
-<!--        android:layout_height="wrap_content"-->
-<!--        android:background="#D3A1E6"-->
-<!--        android:layout_gravity="bottom"-->
-<!--        app:menu="@menu/bottom_navigation_menu"/>-->
-
     <!-- Fragment Container -->
     <androidx.coordinatorlayout.widget.CoordinatorLayout
         android:layout_width="match_parent"
@@ -31,30 +16,6 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent"/>
     </androidx.coordinatorlayout.widget.CoordinatorLayout>
-
-<!--        <androidx.recyclerview.widget.RecyclerView-->
-<!--            android:id="@+id/main_user_recyclerview"-->
-<!--            android:layout_width="wrap_content"-->
-<!--            android:layout_height="wrap_content"-->
-<!--            />-->
-<!--        &lt;!&ndash; TextView for empty state &ndash;&gt;-->
-<!--        <TextView-->
-<!--            android:id="@+id/empty_state_view"-->
-<!--            android:layout_width="match_parent"-->
-<!--            android:layout_height="wrap_content"-->
-<!--            android:text="No users found."-->
-<!--            android:textSize="18sp"-->
-<!--            android:textAlignment="center"-->
-<!--            android:visibility="gone"-->
-<!--            android:layout_gravity="center" />-->
-
-<!--    <com.google.android.material.bottomnavigation.BottomNavigationView-->
-<!--        android:id="@+id/bottomNavigation"-->
-<!--        android:layout_width="match_parent"-->
-<!--        android:layout_height="wrap_content"-->
-<!--        android:layout_gravity="bottom"-->
-<!--        android:background="#D3A1E6"-->
-<!--        app:menu="@menu/bottom_navigation_menu" />-->
 
     <!-- Bottom Navigation in CardView -->
     <androidx.cardview.widget.CardView

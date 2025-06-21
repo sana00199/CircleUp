@@ -1,0 +1,6 @@
+<!-- File: res/drawable/circle_button_background.xml -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="oval">
+    <solid android:color="#CDB9D7"/> <!-- Button ka background color -->
+    <size android:width="@dimen/_36sdp" android:height="@dimen/_36sdp"/> <!-- size set kar sakte ho, ya layout_width/height par depend karega -->
+</shape>

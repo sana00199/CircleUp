@@ -54,7 +54,7 @@ import java.util.concurrent.Executors;
 @Database(entities = {ChatEntity.class,WallpaperEntity.class, UserEntity.class,ContactEntity.class,
         MessageEntity.class, ConversationKeyEntity.class,DeletedMessageIdEntity.class, GroupEntity.class,
         TemporaryRoomEntity.class, GroupMessageEntity.class},
-        version = 25, exportSchema = false) // <<< Increment version and add GroupMessageEntity
+        version = 31, exportSchema = false) // <<< Increment version and add GroupMessageEntity
 @TypeConverters({ChatDatabase.Converters.class}) // Reference the nested Converters class
 public abstract class ChatDatabase extends RoomDatabase {
 

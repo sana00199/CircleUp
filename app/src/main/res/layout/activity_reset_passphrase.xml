@@ -52,30 +52,6 @@
                 android:layout_marginBottom="24dp"/>
 
 
-            <!-- *** NEW TEXTVIEW ADDED HERE *** -->
-            <TextView
-                android:id="@+id/reset_warning_impact_message"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="This means ALL your past encrypted messages are PERMANENTLY LOST and UNREADABLE, both on your side AND on the side of the people you chatted with in those conversations. You will need to start new chats with them."
-                android:textSize="16sp"
-                android:textColor="@android:color/black"
-                android:textStyle="bold"
-            android:gravity="center"
-            android:layout_marginBottom="24dp"/>
-            <!-- *** END NEW TEXTVIEW *** -->
-
-            <TextView
-                android:id="@+id/reset_warning_confirm"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:textStyle="bold"
-                android:textSize="16sp"
-                android:textColor="@android:color/black"
-                android:gravity="center"
-                android:text="Please confirm you understand this data loss before proceeding."
-                android:layout_marginBottom="24dp"/>
-
             <!-- Optional: Identity Verification Section (Recommended for security) -->
             <TextView
                 android:id="@+id/identity_verification_title"

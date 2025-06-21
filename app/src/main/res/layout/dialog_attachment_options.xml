@@ -1,0 +1,171 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+
+    android:orientation="vertical"
+    android:padding="16dp"
+    android:background="#fff">
+    <!-- Added selectableItemBackground background to the root for a nice touch -->
+
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Choose Attachment"
+        android:textAppearance="@style/TextAppearance.AppCompat.Title"
+        android:textColor="@color/black"
+        android:fontFamily="@font/aclonica"
+        android:gravity="center_horizontal"
+        android:layout_marginBottom="16dp"/>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center"
+        android:layout_marginBottom="8dp">
+
+        <!-- Gallery Option -->
+        <LinearLayout
+            android:id="@+id/layout_gallery_option"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:gravity="center_horizontal"
+            android:padding="8dp"
+            android:layout_marginEnd="24dp"
+            android:clickable="true"
+            android:focusable="true"
+            android:background="?android:attr/selectableItemBackgroundBorderless"> <!-- Add ripple effect -->
+
+            <ImageView
+                android:id="@+id/icon_gallery"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:src="@drawable/gallery"
+            android:contentDescription="Choose from Gallery"
+            android:padding="8dp"
+            android:background="@drawable/round_button_background"/>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Gallery"
+                android:layout_marginTop="4dp"
+                android:textColor="@color/black"
+                android:textAppearance="@style/TextAppearance.AppCompat.Small"/>
+
+        </LinearLayout>
+
+        <!-- Camera Option -->
+        <LinearLayout
+            android:id="@+id/layout_camera_option"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:gravity="center_horizontal"
+            android:padding="8dp"
+            android:clickable="true"
+            android:focusable="true"
+            android:background="?android:attr/selectableItemBackgroundBorderless"> <!-- Add ripple effect -->
+
+            <ImageView
+                android:id="@+id/icon_camera"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:src="@drawable/ic_camera"
+            app:tint="#33063A"
+            android:contentDescription="Take Photo"
+            android:padding="8dp"
+            android:background="@drawable/round_button_background"/>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Camera"
+                android:layout_marginTop="4dp"
+                android:textColor="@color/black"
+                android:textAppearance="@style/TextAppearance.AppCompat.Small"/>
+
+        </LinearLayout>
+
+
+
+        <LinearLayout
+            android:id="@+id/layout_invisible_ink_option"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:gravity="center_horizontal"
+        android:padding="8dp"
+        android:clickable="true"
+        android:focusable="true"
+        android:background="?android:attr/selectableItemBackgroundBorderless">
+
+        <ImageView
+            android:id="@+id/icon_invisible_ink"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:src="@drawable/ic_star"
+        app:tint="#33063A"
+        android:contentDescription="Invisible Ink Message"
+        android:padding="8dp"
+        android:background="@drawable/round_button_background"/>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Invisible Ink"
+        android:layout_marginTop="4dp"
+        android:textColor="@color/black"
+        android:textAppearance="@style/TextAppearance.AppCompat.Small"/>
+
+    </LinearLayout>
+    <!-- *** END NEW *** -->
+
+
+
+
+
+        <!-- Add this block after the Invisible Ink option or wherever you want it -->
+        <LinearLayout
+            android:id="@+id/layout_shared_drawing_option"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:gravity="center_horizontal"
+            android:padding="8dp"
+            android:clickable="true"
+            android:focusable="true"
+            android:background="?android:attr/selectableItemBackgroundBorderless">
+
+
+        <ImageView
+            android:id="@+id/icon_shared_drawing"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:src="@drawable/ic_drawing_tool"
+            app:tint="#33063A"
+            android:contentDescription="Invisible Ink Message"
+            android:padding="8dp"
+            android:background="@drawable/round_button_background" />
+        <!-- You might need to create a new drawable resource for this icon (e.g., a pencil, canvas, etc.) -->
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Shared Drawing"
+            android:layout_marginTop="4dp"
+            android:textColor="@color/black"
+            android:textAppearance="@style/TextAppearance.AppCompat.Small"/>
+    </LinearLayout>
+
+
+
+    <!-- You can add more options here later -->
+
+    </LinearLayout>
+
+</LinearLayout>

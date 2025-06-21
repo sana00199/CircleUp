@@ -5,43 +5,70 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:backgroundTint="#E3D0E7"
-    app:cardCornerRadius="36dp"
+    app:cardCornerRadius="16dp"
     app:contentPadding="@dimen/_10sdp"
     app:cardUseCompatPadding="true"
-    app:cardElevation="5dp"
-
-    android:radius="12dp">
+    app:cardElevation="5dp">
 
     <LinearLayout
         android:orientation="vertical"
         android:layout_width="match_parent"
-        android:padding="@dimen/_16sdp"
+        android:padding="@dimen/_10sdp"
         android:layout_height="wrap_content">
 
         <TextView
             android:id="@+id/tvReceiver"
-            android:text="Receiver Names"
-            android:textSize="18sp"
-            android:textColor="#5B0A6A"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content" />
-
-
-        <TextView
-            android:id="@+id/tvMessage"
-            android:text="Message"
+            android:text="To: Receiver Names"
             android:textSize="16sp"
-            android:textColor="@color/black"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"/>
+            android:textStyle="bold"
+            android:textColor="#5B0A6A"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="4dp"/>
+
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:gravity="center_horizontal"
+            android:layout_marginTop="4dp"
+            android:layout_marginBottom="8dp">
+
+            <!-- Text Message Area -->
+            <TextView
+                android:id="@+id/tvMessage"
+                android:text="Scheduled Text Message Content"
+                android:textSize="16sp"
+                android:textColor="@color/black"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:maxLines="5"
+                android:ellipsize="end"
+                android:visibility="gone" /> <!-- Initially hidden, shown for text -->
+
+
+            <ImageView
+                android:id="@+id/imgPreview"
+                android:layout_width="170dp"
+            android:layout_height="170dp"
+            android:scaleType="centerCrop"
+            android:contentDescription="Scheduled Image Preview"
+            android:background="@drawable/image_placeholder_background"
+            android:visibility="gone" />
+
+        </LinearLayout>
 
         <TextView
             android:id="@+id/tvTime"
-            android:text="Scheduled Time"
+            android:text="Scheduled Time: hh:mm a"
             android:textSize="14sp"
             android:textColor="#888"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"/>
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="end"
+            android:layout_marginTop="8dp"/>
+
 
         <LinearLayout
             android:orientation="horizontal"
@@ -49,6 +76,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content">
 
+            <!-- Edit button might be complex, leaving it here but not implementing logic in this step -->
             <Button
                 android:id="@+id/btnEdit"
                 android:text="Edit"
@@ -56,17 +84,18 @@
                 android:layout_height="wrap_content"
                 android:textColor="#fff"
                 android:backgroundTint="#5B035B"
-                android:layout_weight="1"/>
+                android:layout_weight="1"
+                android:visibility="invisible" />
 
             <Button
                 android:id="@+id/btnDelete"
                 android:text="Delete"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:backgroundTint="#5B035B"
-                android:layout_weight="1"
-                android:textColor="#fff"
-                android:layout_marginStart="8dp"/>
+                android:backgroundTint="#D32F2F"
+            android:layout_weight="1"
+            android:textColor="#fff"
+            android:layout_marginStart="8dp"/>
         </LinearLayout>
 
     </LinearLayout>

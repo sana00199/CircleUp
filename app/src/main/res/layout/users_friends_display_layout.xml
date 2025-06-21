@@ -123,33 +123,42 @@
 
                 <Button
                     android:id="@+id/request_accept_button"
-                    android:layout_width="wrap_content"
+                    android:layout_width="0dp"
+                    android:layout_weight="1"
                     android:layout_height="@dimen/_30sdp"
-                    android:text="Accept"
+
                     android:visibility="invisible"
                     android:backgroundTint="#5B8928"
+                    android:text="Accept"
+                    android:padding="5dp"
                     />
 
                 <Button
                     android:id="@+id/send_message_btn"
-                    android:layout_width="wrap_content"
+                    android:layout_width="0dp"
+                    android:layout_weight="1"
                     android:layout_height="@dimen/_30sdp"
-                    android:text="Message"
+
                     android:visibility="invisible"
                     android:backgroundTint="#5B8928"
+                    android:text="Message"
+                    android:padding="5dp"
                     />
 
                 <Button
                     android:id="@+id/request_cancel_button"
-                    android:layout_width="wrap_content"
+                    android:layout_width="0dp"
+                    android:layout_weight="1"
                     android:layout_height="@dimen/_30sdp"
-                    android:text="Cancel"
+
                     android:visibility="invisible"
                     android:backgroundTint="#E66258"
+                    android:text="Cancel"
+                    android:padding="5dp"
                     />
 
-
             </LinearLayout>
+
         </LinearLayout>
 
 

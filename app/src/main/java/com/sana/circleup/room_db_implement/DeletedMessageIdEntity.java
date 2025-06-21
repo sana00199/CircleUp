@@ -5,7 +5,7 @@ import androidx.room.Entity;
 import androidx.room.PrimaryKey;
 import androidx.annotation.NonNull;
 
-@Entity(tableName = "deleted_messages_for_me", primaryKeys = {"ownerUserId", "firebaseMessageId"})
+@Entity(tableName = "deleted_msg_for_me", primaryKeys = {"ownerUserId", "firebaseMessageId"})
 public class DeletedMessageIdEntity {
 
     @NonNull

@@ -53,6 +53,9 @@ volley = "1.2.1"
 cardview = "1.0.0"
 workRuntime = "2.9.0"
 scenecore = "1.0.0-alpha04"
+appcompatVersion = "1.7.1"
+navigationFragment = "2.6.0"
+navigationUi = "2.6.0"
 
 [libraries]
 bcpkix-jdk15on = { module = "org.bouncycastle:bcpkix-jdk15on", version.ref = "bcpkixJdk15on" }
@@ -117,6 +120,9 @@ cardview = { group = "androidx.cardview", name = "cardview", version.ref = "card
 work-runtime = { module = "androidx.work:work-runtime", version.ref = "workRuntime" }
 onesignal = { module = "com.onesignal:OneSignal", version.ref = "onesignal" }
 scenecore = { group = "androidx.xr.scenecore", name = "scenecore", version.ref = "scenecore" }
+androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "appcompatVersion" }
+androidx-navigation-fragment = { group = "androidx.navigation", name = "navigation-fragment", version.ref = "navigationFragment" }
+androidx-navigation-ui = { group = "androidx.navigation", name = "navigation-ui", version.ref = "navigationUi" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

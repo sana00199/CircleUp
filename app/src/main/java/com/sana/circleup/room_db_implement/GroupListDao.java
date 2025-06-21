@@ -25,6 +25,21 @@ public interface GroupListDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     void insertOrUpdateGroup(GroupEntity group);
 
+    // --- NEW: Query to delete a specific GroupEntity for an owner ---
+    @Query("DELETE FROM groupss WHERE groupId = :groupId AND owner_user_id = :ownerUserId")
+    void deleteGroupForOwner(String groupId, String ownerUserId);
+    // --- End NEW ---
+
+
+    @Query("SELECT COUNT(*) FROM groupss WHERE owner_user_id = :ownerUserId AND hasUnreadMessages = 1")
+    int getUnreadGroupCount(String ownerUserId);
+
+    // Query to get the count of temporary rooms owned by a user that have unread messages and are not expired
+    // expiryTime is stored in milliseconds. Check if expiryTime is NULL or greater than current time.
+    @Query("SELECT COUNT(*) FROM temporary_rooms WHERE owner_user_id = :ownerUserId AND hasUnreadMessages = 1 AND (expiryTime IS NULL OR expiryTime > :currentTimeMillis)")
+    int getUnreadTemporaryRoomCount(String ownerUserId, long currentTimeMillis);
+
+
     /**
      * Gets all GroupEntity entries for a specific logged-in user, ordered by the latest message timestamp (latest first).
      * This query filters by the owner_user_id column.
@@ -43,8 +58,8 @@ public interface GroupListDao {
     /**
      * Deletes a specific GroupEntity for an owner (using composite key fields).
      */
-    @Query("DELETE FROM groupss WHERE groupId = :groupId AND owner_user_id = :loggedInUserId")
-    void deleteGroupForOwner(String groupId, String loggedInUserId);
+//    @Query("DELETE FROM groupss WHERE groupId = :groupId AND owner_user_id = :loggedInUserId")
+//    void deleteGroupForOwner(String groupId, String loggedInUserId);
 
 
     // --- Operations for TemporaryRoomEntity ---

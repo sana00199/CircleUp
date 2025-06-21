@@ -773,6 +773,7 @@ public class YOUR_DRAWING_ACTIVITY_CLASS extends AppCompatActivity implements Dr
     // --- Session Info ---
     private String groupId;
     private String sessionId;
+    private String conversationId;
     private String currentUserID;
     private String currentUserName;
     private String sessionStarterId;
@@ -822,24 +823,65 @@ public class YOUR_DRAWING_ACTIVITY_CLASS extends AppCompatActivity implements Dr
         }
         currentUserID = currentUser.getUid();
 
-        groupId = getIntent().getStringExtra("groupId");
-        sessionId = getIntent().getStringExtra("sessionId");
+        // --- MODIFIED: Get groupId OR conversationId from Intent ---
+        // Use getIntent().getStringExtra() to retrieve the IDs
+        groupId = getIntent().getStringExtra("groupId");         // Will be non-null if launched from Group chat
+        conversationId = getIntent().getStringExtra("conversationId"); // Will be non-null if launched from 1:1 chat
+        sessionId = getIntent().getStringExtra("sessionId");     // Session ID is necessary for both types
 
-        if (TextUtils.isEmpty(groupId) || TextUtils.isEmpty(sessionId)) {
-            Log.e(TAG, "CRITICAL ERROR: Group ID or Session ID missing from Intent!");
+
+        boolean isGroupSession = !TextUtils.isEmpty(groupId);
+        boolean isOneToOneSession = !TextUtils.isEmpty(conversationId); //
+
+
+
+        if (TextUtils.isEmpty(sessionId) || (!isGroupSession && !isOneToOneSession)) { // <<< CORRECTED CONDITION
+            Log.e(TAG, "CRITICAL ERROR: Session ID missing or neither Group ID nor Conversation ID provided!");
             Toast.makeText(this, "Error: Drawing session information missing!", Toast.LENGTH_LONG).show();
             finish();
             return;
         }
         Log.d(TAG, "Received Group ID: " + groupId + ", Session ID: " + sessionId);
 
+        if (isGroupSession) {
+            Log.d(TAG, "Launched Group Session. Group ID: " + groupId + ", Session ID: " + sessionId);
+        } else { // If not a group session and sessionID + conversationId are present, it's a 1:1 session
+            Log.d(TAG, "Launched One-to-One Session. Conversation ID: " + conversationId + ", Session ID: " + sessionId);
+        }
+
         rootRef = FirebaseDatabase.getInstance().getReference();
         usersRef = rootRef.child("Users");
-        groupRef = rootRef.child("Groups").child(groupId);
-        drawingSessionRef = groupRef.child("drawingSessions").child(sessionId);
-        strokesRef = drawingSessionRef.child("strokes");
-        sessionStateRef = drawingSessionRef.child("state");
-        activeSessionUsersRef = drawingSessionRef.child("activeUsers");
+//        groupRef = rootRef.child("Groups").child(groupId);
+//        drawingSessionRef = groupRef.child("drawingSessions").child(sessionId);
+//        strokesRef = drawingSessionRef.child("strokes");
+//        sessionStateRef = drawingSessionRef.child("state");
+//        activeSessionUsersRef = drawingSessionRef.child("activeUsers");
+
+
+        DatabaseReference parentRef; // This will be the reference to either the Group or Conversation node
+
+        if (isGroupSession) {
+            // Path for Group chat sessions: Groups/{groupId}/drawingSessions/{sessionId}/...
+            parentRef = rootRef.child("Groups").child(groupId); // Reference to the specific group node
+            groupRef = parentRef; // Also set groupRef if you use it elsewhere (e.g., for fetching group name)
+            Log.d(TAG, "Using Group path for Firebase references.");
+        } else { // If not a group session, it must be a one-to-one session
+            // Path for One-to-one chat sessions: Conversations/{conversationId}/drawingSessions/{sessionId}/...
+            parentRef = rootRef.child("Conversations").child(conversationId); // Reference to the specific conversation node
+            groupRef = null; // groupRef will be null for a 1:1 chat
+            Log.d(TAG, "Using Conversation path for Firebase references.");
+        }
+
+        // The drawingSessionRef is now a child of the correctly determined parentRef
+        drawingSessionRef = parentRef.child("drawingSessions").child(sessionId);
+
+        // The strokes, session state, and active users nodes are children of the drawingSessionRef
+        strokesRef = drawingSessionRef.child("strokes"); // Strokes node relative to the session node
+        sessionStateRef = drawingSessionRef.child("state"); // State node relative to the session node
+        activeSessionUsersRef = drawingSessionRef.child("activeUsers"); // Active users relative to the session node
+        // --- END MODIFIED Firebase References ---
+
+
 
         InitializeFields();
 
@@ -919,7 +961,21 @@ public class YOUR_DRAWING_ACTIVITY_CLASS extends AppCompatActivity implements Dr
             getSupportActionBar().setDisplayHomeAsUpEnabled(true);
         }
         toolbarTitle = findViewById(R.id.toolbar_title);
-        if (toolbarTitle == null) Log.e(TAG, "Toolbar title TextView not found!");
+        boolean isGroupSession = !TextUtils.isEmpty(groupId);
+        if (toolbarTitle != null) {
+            if (isGroupSession) {
+                // For group chat, a generic title like "Group Drawing" is usually fine
+                // If you fetched the group name elsewhere, you could use it here.
+                toolbarTitle.setText("Group Drawing");
+            } else {
+                // For 1:1 chat, a generic title like "Shared Drawing" or "1-on-1 Drawing" is suitable.
+                // You don't have the partner's name easily here unless you pass it via Intent.
+                toolbarTitle.setText("Shared Drawing");
+            }
+        }
+
+
+
 
         activeUsersRecyclerView = findViewById(R.id.active_users_recycler_view);
         if (activeUsersRecyclerView == null) Log.e(TAG, "Active Users RecyclerView not found!");
@@ -1063,24 +1119,39 @@ public class YOUR_DRAWING_ACTIVITY_CLASS extends AppCompatActivity implements Dr
         if (sessionEndedIndicator != null) {
             sessionEndedIndicator.setVisibility(enableDrawing ? View.GONE : View.VISIBLE);
         }
-        if (toolbarTitle != null) {
-            toolbarTitle.setText(enableDrawing ? "Shared Drawing" : "Shared Drawing (Ended)");
-        }
 
+        // --- MODIFIED: Update toolbar title based on session state AND type ---
+        if (toolbarTitle != null) {
+            // Determine session type (copy logic from onCreate or use member variable)
+            boolean isGroupSession = !TextUtils.isEmpty(groupId); // Need groupId member variable
+
+            String baseTitle;
+            if (isGroupSession) {
+                baseTitle = "Group Drawing"; // Base title for group sessions
+            } else {
+                baseTitle = "Shared Drawing"; // Base title for 1:1 sessions
+            }
+
+            if (enableDrawing) {
+                toolbarTitle.setText(baseTitle); // Active state uses base title
+            } else {
+                toolbarTitle.setText(baseTitle + " (Ended)"); // Ended state appends "(Ended)"
+            }
+        }
+        // --- END MODIFIED ---
+
+        // The rest of the UI updates based on 'isInitiator' and 'enableDrawing' remain the same.
         if (btnClearDrawing != null) {
             btnClearDrawing.setEnabled(isInitiator && enableDrawing);
         }
         if (btnEndSession != null) {
             btnEndSession.setEnabled(isInitiator && enableDrawing);
         }
-        // Update visual state of tool buttons based on enabled state
+
         updateColorButtonState();
         updateStrokeSizeButtonState();
         updateToolButtonState();
-        // Update visual state of pan/zoom buttons based on enabled state
-        updatePanZoomButtonState(); // <<< NEW Call
-
-        Log.d(TAG, "UI updated for state: " + state + ", Drawing Enabled: " + enableDrawing);
+        updatePanZoomButtonState();
     }
 
     private void setDrawingEnabled(boolean enabled) {

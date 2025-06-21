@@ -33,6 +33,41 @@
         android:scrollbars="vertical"
          />
 
+
+    <FrameLayout
+        android:id="@+id/imagePreviewContainer"
+        android:layout_width="@dimen/_270sdp"
+        android:layout_height="@dimen/_270sdp"
+        android:layout_above="@+id/cardview_input"
+        android:layout_centerHorizontal="true"
+        android:layout_gravity="center"
+        android:layout_marginBottom="4dp"
+        android:visibility="visible" >
+
+        <ImageView
+            android:id="@+id/imgPreview"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:scaleType="centerCrop"
+            android:background="@drawable/image_placeholder_background"/>
+
+        <ImageButton
+            android:id="@+id/btnCancelImage"
+            android:layout_width="50dp"
+            android:layout_height="50dp"
+            android:layout_gravity="top|end"
+            android:src="@drawable/ic_cancel"
+            android:background="@android:color/transparent"
+            android:padding="4dp"
+            android:translationZ="2dp"
+            android:elevation="2dp"
+            android:visibility="gone"
+            app:tint="@android:color/white" />
+
+    </FrameLayout>
+
+
+
     <!-- Bottom Message Input Wrapped in CardView -->
     <androidx.cardview.widget.CardView
         android:layout_width="match_parent"
@@ -67,7 +102,7 @@
                     android:padding="7dp"
                     android:textSize="@dimen/_11sdp"
                     android:textColor="@color/black"
-                    android:textColorHint="@color/black"
+                    android:textColorHint="@color/gray"
                     android:fontFamily="@font/poppins_regular"
                     android:hint="Type The Messages..."
                     android:paddingStart="@dimen/_13sdp"

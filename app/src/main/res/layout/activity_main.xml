@@ -65,7 +65,11 @@
         android:elevation="12dp"
         app:itemIconTint="@color/black"
         app:itemTextColor="@color/black"
-        android:listDivider="@drawable/nav_divider" /> <!-- Add custom grey divider -->
+        android:listDivider="@drawable/nav_divider" >
+
+
+    </com.google.android.material.navigation.NavigationView>
+
 
 
 

@@ -6,13 +6,15 @@
     <color name="white">#FFFFFFFF</color>
     <color name="active_color">#FF5733</color> <!-- Replace with your desired color -->
     <color name="inactive_color">#B0B0B0</color>  <!-- Example inactive color -->
-
+    <color name="grey">#FFCCCCCC</color>
 
         <color name="purple">#800080</color> <!-- Purple color -->
     <color name="transparent">#00000000</color> <!-- Transparent color -->
 
     <color name="teal_700">#018786</color>
     <color name="gray">#808080</color>
+    <color name="dark_gray">#262525</color>
+    <color name="reed">#FF0000</color>
 
     <!-- Your existing colors here -->
     <color name="your_primary_color">#FF0000</color>   <!-- Example Red -->

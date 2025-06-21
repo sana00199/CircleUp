@@ -6,7 +6,6 @@
     </style>
 
 
-
     <style name="NavDrawerHeadingText" parent="TextAppearance.AppCompat.Small">
         <item name="android:textColor">#C53DDC</item> <!-- Your desired color for LIGHT mode -->
         <!-- Optional: <item name="android:textStyle">bold</item> -->

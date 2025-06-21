@@ -1,8 +1,12 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
     android:padding="@dimen/_10sdp">
+
+
+    <!-- *** END NEW TEXTVIEW *** -->
 
     <!-- Receiver's message -->
     <LinearLayout
@@ -13,6 +17,7 @@
         android:gravity="start"
         android:orientation="horizontal">
 
+        <!-- Receiver Profile Image -->
         <de.hdodenhof.circleimageview.CircleImageView
             android:id="@+id/receiver_profile_image"
             android:layout_width="@dimen/_40sdp"
@@ -20,38 +25,127 @@
             android:layout_marginEnd="@dimen/_7sdp"
             android:src="@drawable/default_profile_img" />
 
+
+
+        <!-- Container for Receiver Message Bubble Content -->
+        <!-- This LinearLayout wraps the text/image/placeholder and has the bubble background -->
         <LinearLayout
             android:layout_width="240dp"
             android:layout_height="wrap_content"
-            android:orientation="vertical"
-            >
+            android:orientation="vertical">
 
-            <TextView
-                android:id="@+id/receiver_message_text"
+            <!-- *** Receiver Message Content Container *** -->
+            <!-- Apply the bubble background drawable here -->
+            <!-- This container will be the clickable area for reveal -->
+            <LinearLayout
+                android:id="@+id/receiver_message_content_container"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:orientation="vertical"
                 android:background="@drawable/reciver_shape"
-                android:padding="8dp"
-                android:text="hi i am receiver"
-                android:textSize="18sp"
-                android:textColor="#000" />
-            <TextView
-                android:id="@+id/reactionTextView"
-                android:layout_width="wrap_content"
-                android:layout_height="10dp"
-                android:padding="8dp"
-                android:visibility="gone"
-                android:textSize="18sp"
-                android:textColor="#000" />
+                android:padding="0dp"> <!-- Add padding="0dp" to the container itself if padding is on inner views -->
 
-            <ImageView
-                android:id="@+id/receiver_image_view"
-                android:layout_width="200dp"
-                android:layout_height="200dp"
+
+                <!-- Receiver actual message text -->
+                <TextView
+                    android:id="@+id/receiver_message_text"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:padding="8dp"
+                    android:text="hi i am receiver"
+                    android:background="@drawable/reciver_shape"
+                    android:textSize="18sp"
+                    android:textColor="#000"
+                    android:maxWidth="240dp"/> <!-- Keep maxWidth consistent -->
+
+                <!-- NEW TextView for Hidden Placeholder (Invisible Ink Text) -->
+                <TextView
+                    android:id="@+id/hidden_message_placeholder"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:padding="8dp"
+                    android:text="Tap to Reveal 👻"
+                    android:textColor="#F4EBEB"
+                    android:textStyle="italic"
+                    android:background="#5D1C66"
+                    android:textSize="18sp"
+                    android:maxWidth="240dp"
+                android:visibility="gone"/>
+
+                <!-- Receiver Image View (Existing) -->
+                <ImageView
+                    android:id="@+id/receiver_image_view"
+                    android:layout_width="200dp"
+                    android:layout_height="200dp"
+                    android:layout_marginTop="4dp"
+                    android:scaleType="centerCrop"
+                    android:visibility="gone" />
+
+                <!-- *** NEW ImageView for Hidden Image Placeholder (Invisible Ink Image) *** -->
+                <ImageView
+                    android:id="@+id/hidden_image_placeholder"
+                    android:layout_width="200dp"
+                android:layout_height="220dp"
                 android:layout_marginTop="4dp"
-                android:scaleType="centerCrop"
-                android:visibility="gone" />
+                android:scaleType="centerInside"
+                android:src="@drawable/ic_hidden_image"
+                    android:background="#5D1C66"
+                android:contentDescription="Tap to Reveal Image"
+                android:visibility="gone"/>
+                <!-- *** END NEW ImageView *** -->
 
+                <TextView
+                    android:id="@+id/hidden_image_placeholder_text"
+                    android:layout_width="200dp"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center"
+                    android:text="Tap to Reveal Image 👻"
+                    android:textColor="@android:color/white"
+                    android:textStyle="bold"
+                    android:textSize="16sp"
+                    android:background="#5D1C66"
+                    android:gravity="center"
+                    android:visibility="gone"/>
+
+                <!-- *** NEW TextView for RECEIVER Drawing Link *** -->
+                <TextView
+                    android:id="@+id/receiver_drawing_link_text_one_to_one"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:background="@drawable/background_drawing_receiver"
+                    android:padding="8dp"
+                    android:text="[Drawing Session Link]"
+                    android:textSize="15sp"
+                    android:textColor="@color/black"
+                    android:textStyle="bold|italic"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:autoLink="web"
+                    android:linksClickable="true"
+                    android:drawablePadding="8dp"
+                    app:drawableTint="@color/black"
+                    android:gravity="center_vertical"
+                    android:visibility="gone" />
+                <!-- *** END NEW TextView *** -->
+
+
+
+
+                <!-- reactionTextView seems unused or for future, keeping it -->
+                <TextView
+                    android:id="@+id/reactionTextView"
+                    android:layout_width="wrap_content"
+                    android:layout_height="10dp"
+                    android:padding="8dp"
+                    android:visibility="gone"
+                    android:textSize="18sp"
+                    android:textColor="#000" />
+
+
+            </LinearLayout>
+            <!-- *** END Receiver Message Content Container *** -->
+
+            <!-- Receiver message time -->
             <TextView
                 android:id="@+id/msg_receiver_time"
                 android:layout_width="wrap_content"
@@ -68,50 +162,54 @@
 
 
 
-    <!-- NEW: System Message Layout -->
+    <!-- System Message Layout (Existing) -->
     <LinearLayout
         android:id="@+id/system_message_layout"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
         android:gravity="center"
-    android:layout_gravity="center"
-    android:visibility="gone"
-    android:paddingVertical="@dimen/_8sdp">
+        android:layout_gravity="center"
+        android:visibility="gone"
+        android:paddingVertical="@dimen/_8sdp">
 
-    <TextView
-        android:id="@+id/tv_system_message"
-    android:layout_width="wrap_content"
-    android:layout_height="wrap_content"
-    android:padding="@dimen/_5sdp"
-    android:text="security Code Changed by user"
-    android:textSize="@dimen/_11sdp"
-    android:textStyle="bold|italic"
-    android:textColor="@color/gray"
-    android:background="@drawable/system_message_background" />
+        <TextView
+            android:id="@+id/tv_system_message"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:padding="@dimen/_5sdp"
+            android:text="security Code Changed by user"
+            android:textSize="@dimen/_11sdp"
+            android:textStyle="bold|italic"
+            android:textColor="@color/gray"
+            android:background="@drawable/system_message_background" />
 
-</LinearLayout>
-    <!-- END NEW -->
+    </LinearLayout>
 
-    <!-- Sender's message (Removed profile image) -->
+
+    <!-- Sender's message layout (Existing) -->
     <LinearLayout
         android:id="@+id/sender_layout"
         android:layout_width="240dp"
         android:layout_height="wrap_content"
         android:layout_gravity="end"
         android:gravity="end"
-        android:orientation="vertical">
+        android:orientation="vertical"
+       >
 
+        <!-- Sender actual message text (Existing) -->
         <TextView
             android:id="@+id/sender_message_text"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:background="@drawable/sender_shape"
             android:padding="8dp"
             android:text="hi i am sender"
             android:textSize="18sp"
-            android:textColor="#141212" />
+            android:textColor="#141212"
+            android:background="@drawable/sender_shape"
+            android:maxWidth="240dp"/> <!-- Keep maxWidth consistent -->
 
+        <!-- Sender Image View (Existing) -->
         <ImageView
             android:id="@+id/sender_image_view"
             android:layout_width="200dp"
@@ -120,6 +218,30 @@
             android:scaleType="centerCrop"
             android:visibility="gone" />
 
+
+
+        <TextView
+            android:id="@+id/sender_drawing_link_text_one_to_one"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="@drawable/background_drawing_sender"
+            android:padding="8dp"
+            android:text="[Drawing Session Link]"
+            android:textSize="17sp"
+            android:textColor="#141212"
+            android:textStyle="bold|italic"
+            android:clickable="true"
+            android:focusable="true"
+            android:autoLink="web"
+            android:linksClickable="true"
+            android:drawablePadding="8dp"
+            app:drawableTint="#141212"
+            android:gravity="center_vertical"
+            android:visibility="gone" />
+        <!-- *** END NEW TextView *** -->
+
+
+        <!-- Sender message time (Existing) -->
         <TextView
             android:id="@+id/msg_send_time"
             android:layout_width="wrap_content"
@@ -130,7 +252,7 @@
             android:layout_marginTop="2dp"
             android:paddingStart="5dp" />
 
-
+        <!-- Sender seen time / status (Existing) -->
         <TextView
             android:id="@+id/msg_seen_time"
             android:layout_width="wrap_content"

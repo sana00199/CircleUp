@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+
+    <!-- Background color of the bubble -->
+    <!-- You can choose a light grey, a color from your theme, or any other color -->
+    <solid android:color="#E0E0E0" /> <!-- Example: Light Grey -->
+    <!-- Or use a color from your colors.xml: <solid android:color="@color/your_light_bubble_color" /> -->
+
+    <!-- Rounded corners -->
+    <corners android:radius="8dp" />
+
+    <!-- Optional: Add a stroke (border) to make it more distinct -->
+    <!-- Using ?attr/colorAccent makes the border match your app's accent color -->
+    <!-- You can change this color or remove the stroke tag if you don't want a border -->
+    <stroke
+        android:width="1dp"
+        android:color="?attr/colorAccent" />
+
+    <!-- Padding inside the bubble, around the text -->
+    <!-- Ensure this padding complements the padding in the TextView in your layout XML -->
+    <padding
+        android:left="10dp"
+        android:top="10dp"
+        android:right="10dp"
+        android:bottom="10dp" />
+
+</shape>

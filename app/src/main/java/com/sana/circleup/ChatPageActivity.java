@@ -33,8 +33,10 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.EditText;
+import android.widget.FrameLayout;
 import android.widget.ImageButton;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -70,6 +72,7 @@ import com.google.firebase.database.ValueEventListener;
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
+import com.sana.circleup.drawingboard_chatgroup.YOUR_DRAWING_ACTIVITY_CLASS;
 import com.sana.circleup.encryptionfiles.CryptoUtils;
 import com.sana.circleup.encryptionfiles.YourKeyManager;
 import com.sana.circleup.one_signal_notification.OneSignalApiService;
@@ -118,20 +121,37 @@ import retrofit2.Response;
 import retrofit2.Retrofit;
 import retrofit2.converter.gson.GsonConverterFactory;
 
+import com.google.android.material.bottomsheet.BottomSheetDialog;
 
 public class ChatPageActivity extends AppCompatActivity implements
-        MessageAdapter.OnMessageLongClickListener {
+        MessageAdapter.OnMessageLongClickListener,
+        MessageAdapter.OnMessageClickListener {
 
     private static final String TAG = "ChatPageActivity";
+
+
+    // Implement the new interface method for single taps
+
+    // Keep your existing onMessageLongClick method implementation
+
+
+
+
 
     // --- Existing members ---
     private String messageReceiverID, messageReceiverName, messageReceiverImage;
     private TextView userName, userLastSeen;
     private CircleImageView userProfileImage; // Use full package name here
     private ImageButton sendMessageButton, send_imgmsg_btn;
+    // --- Existing members ---
+// ... other members ...
+// private ImageButton sendMessageButton, send_imgmsg_btn; // Old declaration
+    private ImageButton  attachmentButton; // MODIFIED
+    // ... rest of members ...
     private EditText messageInputText;
     private Toolbar chatToolbar;
     private FirebaseAuth mAuth;
+    private boolean isInvisibleInkSelected = false; // Default is false (normal sending)
 
 
     // ... (existing members) ...
@@ -193,8 +213,15 @@ public class ChatPageActivity extends AppCompatActivity implements
     private static final int IMAGE_SEND_COMPRESSION_QUALITY = 85; // JPEG compression quality (e.g., 85%)
 
 
-// ... existing member variables ...
+// ... existing members ...
 
+    // --- New members for Image Preview ---
+    private FrameLayout imagePreviewContainer;
+    private ImageView imgPreview;
+    private ImageButton btnCancelImage;
+// --- End New members ---
+
+// ... rest of members ...
 
     private RecyclerView.OnScrollListener recyclerViewScrollListener;
 
@@ -307,10 +334,17 @@ public class ChatPageActivity extends AppCompatActivity implements
             }
 
 
+
+            if (wasUiInitiallyDisabled) {
+                messageInputText.setEnabled(false);
+                sendMessageButton.setEnabled(false);
+                attachmentButton.setEnabled(false); // ADDED
+                messageInputText.setHint("Secure chat unavailable");
+            }
             // --- Disable UI for sending messages ---
             messageInputText.setEnabled(false);
             sendMessageButton.setEnabled(false);
-            send_imgmsg_btn.setEnabled(false);
+//            send_imgmsg_btn.setEnabled(false);
             messageInputText.setHint("Secure chat unavailable");
             // --- End Disable UI ---
 
@@ -333,28 +367,54 @@ public class ChatPageActivity extends AppCompatActivity implements
 
 
         // --- *** Modify Button Click Listeners to call new SendMessage variants *** ---
-        sendMessageButton.setOnClickListener(v -> SendTextMessage());
-        send_imgmsg_btn.setOnClickListener(v -> {
-            // Ensure secure chat keys are available before picking image for encryption
-            // Check dynamically here, don't rely solely on initial flag
+        // In onCreate:
+        sendMessageButton.setOnClickListener(v -> attemptSendMessage()); // Call the new method
+        // In onCreate:
+//        send_imgmsg_btn.setOnClickListener(v -> {
+//            // Ensure secure chat keys are available before picking image for encryption
+//            boolean isSecureChatAvailable = YourKeyManager.getInstance().isPrivateKeyAvailable() && YourKeyManager.getInstance().hasConversationKey(conversationId);
+//            if (!isSecureChatAvailable) {
+//                Toast.makeText(this, "Secure chat is not enabled to send images.", Toast.LENGTH_SHORT).show();
+//                Log.w(TAG, "Image picker blocked: Secure chat keys unavailable.");
+//                return; // Do not proceed if secure chat keys are off
+//            }
+//
+//            // Clear any previously selected image before opening the picker for a new one
+//            clearSelectedImage();
+//
+//            // Show the dialog to choose source (Gallery or Camera)
+//            showImageSourceDialog();
+//        });
+
+
+
+        attachmentButton.setOnClickListener(v -> { // ADDED listener for attachment button
+            // Secure Chat check *before* showing picker dialog
             boolean isSecureChatAvailable = YourKeyManager.getInstance().isPrivateKeyAvailable() && YourKeyManager.getInstance().hasConversationKey(conversationId);
             if (!isSecureChatAvailable) {
                 Toast.makeText(this, "Secure chat is not enabled to send images.", Toast.LENGTH_SHORT).show();
-                return; // Do not proceed if secure chat keys are off
+                Log.w(TAG, "Attachment picker blocked: Secure chat keys unavailable.");
+                return;
             }
-//            Intent intent = new Intent();
-//            intent.setType("image/*");
-//            intent.setAction(Intent.ACTION_GET_CONTENT);
-//            startActivityForResult(intent, PICK_IMAGE_REQUEST);
 
+            // Clear any previously selected image before opening the picker for a new one
+            clearSelectedImage(); // ADDED: Important to clear previous selection
 
-            showImageSourceDialog();
-
-
+            // Show the dialog to choose source (Gallery or Camera)
+            showAttachmentOptionsBottomSheet();// ADDED: New method for the dialog
         });
+
+
+
         // --- *** End Modify Button Click Listeners *** ---
 
         initializeImagePickers();
+
+        // In onCreate or InitializeControllers:
+        if (btnCancelImage != null) {
+            btnCancelImage.setOnClickListener(v -> clearSelectedImage());
+        }
+
 
         // Initialize the permission launcher
         requestCameraPermissionLauncher = registerForActivityResult(
@@ -363,7 +423,7 @@ public class ChatPageActivity extends AppCompatActivity implements
                     if (isGranted) {
                         Log.d(TAG, "Camera permission granted. Proceeding to open camera.");
                         // Permission was granted, now actually launch the camera intent
-                        launchCameraIntent(); // Call the helper method to launch camera
+                        launchCameraIntentForAttachment(); // Call the helper method to launch camera
                     } else {
                         Log.w(TAG, "Camera permission denied.");
                         // Permission denied, inform the user
@@ -420,7 +480,8 @@ public class ChatPageActivity extends AppCompatActivity implements
         wallpaperDao = db.wallpaperDao();
 
         sendMessageButton = findViewById(R.id.send_msg_btn);
-        send_imgmsg_btn = findViewById(R.id.send_imgmsg_btn);
+//        send_imgmsg_btn = findViewById(R.id.send_imgmsg_btn);
+        attachmentButton = findViewById(R.id.btn_attachment);
         messageInputText = findViewById(R.id.input_msg);
         messagesList = findViewById(R.id.privatemsges_list_of_users);
 
@@ -429,9 +490,17 @@ public class ChatPageActivity extends AppCompatActivity implements
         messagesList.setLayoutManager(linearLayoutManager);
         messagesList.setHasFixedSize(true);
 
+        // --- Initialize new Image Preview UI elements ---
+        imagePreviewContainer = findViewById(R.id.imagePreviewContainer);
+        imgPreview = findViewById(R.id.imgPreview);
+        btnCancelImage = findViewById(R.id.btnCancelImage);
 
-        // Initialize the MessageAdapter. It uses the messagesArrayList which will be populated by LiveData.
-        messageAdapter = new MessageAdapter(messagesArrayList, this, messageReceiverImage, messageSenderID);
+        // Initially hide the image preview area
+        imagePreviewContainer.setVisibility(View.GONE);
+        btnCancelImage.setVisibility(View.GONE);
+
+
+        messageAdapter = new MessageAdapter(messagesArrayList, (Context) this, messageReceiverImage, messageSenderID, (MessageAdapter.OnMessageClickListener) this); // *** MODIFIED: Added 'this' as the 5th argument ***
         messagesList.setAdapter(messageAdapter);
     }
 
@@ -719,197 +788,270 @@ public class ChatPageActivity extends AppCompatActivity implements
 
 
     // --- Modified Method to Send Text Message (Includes Encryption) ---
-    private void SendTextMessage() {
-        String messageText = messageInputText.getText().toString().trim();
+    // Inside ChatPageActivity class
+
+    // --- Modified Method to Send Text Message (Includes Encryption and Invisible Ink Flag) ---
+    private void SendTextMessage(String messageText, boolean isInvisibleInk) { // *** MODIFIED SIGNATURE: Added boolean isInvisibleInk ***
+        Log.d(TAG, "SendTextMessage called. Message length: " + messageText.length() + ", Invisible Ink: " + isInvisibleInk);
+
         if (TextUtils.isEmpty(messageText)) {
-            Toast.makeText(this, "Please enter a message!", Toast.LENGTH_SHORT).show();
-            return;
+            Log.w(TAG, "SendTextMessage called with empty text. This should be caught by attemptSendMessage.");
+            return; // Should ideally not happen if attemptSendMessage validates correctly
         }
 
         // --- *** CHECK if Secure Chat is Enabled (Keys are available) *** ---
-        boolean isSecureChatAvailable = YourKeyManager.getInstance().isPrivateKeyAvailable() && YourKeyManager.getInstance().hasConversationKey(conversationId); // *** MODIFIED CHECK ***
+        // Keep this check here as a final safeguard, even if attemptSendMessage checks.
+        boolean isSecureChatAvailable = YourKeyManager.getInstance().isPrivateKeyAvailable() && YourKeyManager.getInstance().hasConversationKey(conversationId);
+        SecretKey conversationAESKey = YourKeyManager.getInstance().getConversationKey(conversationId);
 
-        // Get the *single* conversation key from KeyManager
-        SecretKey conversationAESKey = YourKeyManager.getInstance().getConversationKey(conversationId); // *** MODIFIED ***
-
-        if (!isSecureChatAvailable || conversationAESKey == null) { // Check if key is null explicitly
-            Log.w(TAG, "Cannot send message: Secure chat keys are not available.");
-            if (!YourKeyManager.getInstance().isPrivateKeyAvailable()) {
-                Toast.makeText(this, "Your account is not unlocked for secure chat.", Toast.LENGTH_SHORT).show();
-            } else {
-                // This case should imply YourKeyManager.hasConversationKey was false, but good to be specific
-                Toast.makeText(this, "Secure chat key missing for this conversation.", Toast.LENGTH_SHORT).show();
-            }
-            return; // Do not proceed if keys are not available
+        if (!isSecureChatAvailable || conversationAESKey == null) {
+            Log.w(TAG, "SendTextMessage blocked: Secure chat keys are not available.");
+            // Toast or UI disabling is handled by attemptSendMessage/onResume.
+            // We might want to update the local message status to failed here if it were already saved as pending.
+            // But since we save to Room *after* getting Firebase push ID, we don't have the ID yet here.
+            // The 'pending' message saved later will likely stay 'pending' until keys are available or user retries.
+            runOnUiThread(() -> Toast.makeText(ChatPageActivity.this, "Secure chat not available, cannot send message.", Toast.LENGTH_SHORT).show());
+            return;
         }
         // --- *** END Check *** ---
 
-        String sendTime = new SimpleDateFormat("hh:mm a", Locale.getDefault()).format(new Date()); // Formatted local time
+        String sendTime = new SimpleDateFormat("hh:mm a", Locale.getDefault()).format(new Date());
         Object firebaseTimestamp = ServerValue.TIMESTAMP; // Firebase ServerValue for consistent time
         long localTimestamp = System.currentTimeMillis(); // Local timestamp for initial Room order
 
+        // 1. Generate Firebase Push ID FIRST
         DatabaseReference messagesRef = rootRef.child("Messages").child(conversationId).push(); // Use conversationId here!
         String messagePushId = messagesRef.getKey();
 
         if (messagePushId == null) {
-            Log.e(TAG, "Firebase push key generation failed. Cannot send message.");
-            Toast.makeText(this, "Error sending message: Failed to generate ID.", Toast.LENGTH_SHORT).show();
+            Log.e(TAG, "Firebase push key generation failed. Cannot send text message.");
+            runOnUiThread(() -> Toast.makeText(ChatPageActivity.this, "Error sending message: Failed to generate ID.", Toast.LENGTH_SHORT).show());
             return; // Exit the method if ID is null
         }
-        Log.d(TAG, "Generated Firebase push ID: " + messagePushId);
+        Log.d(TAG, "Generated Firebase push ID for text message: " + messagePushId + " (Invisible Ink: " + isInvisibleInk + ")");
 
-        // --- *** ENCRYPT the message content and get the Base64 STRING *** ---
-        byte[] encryptedBytes; // Will get raw bytes from encryption
-        String encryptedMessageContentBase64; // Will be the Base64 String for storage/sending
+
+        // --- *** ENCRYPT the message content *** ---
+        // Encrypt the *actual* text regardless of the display effect.
+        byte[] encryptedBytes;
+        String encryptedMessageContentBase64;
         try {
-            // Use the NEW encryptMessageWithAES which returns byte[]
-            encryptedBytes = CryptoUtils.encryptMessageWithAES(messageText, conversationAESKey); // <-- MODIFIED
+            encryptedBytes = CryptoUtils.encryptMessageWithAES(messageText, conversationAESKey); // Encrypt raw text
+            encryptedMessageContentBase64 = CryptoUtils.bytesToBase64(encryptedBytes); // Convert encrypted bytes to Base64 string
 
-            // Immediately encode this byte[] into a Base64 String using CryptoUtils.bytesToBase64
-            encryptedMessageContentBase64 = CryptoUtils.bytesToBase64(encryptedBytes); // *** NEW STEP ***
-
-            if (TextUtils.isEmpty(encryptedMessageContentBase64)) { // Defensive check
+            if (TextUtils.isEmpty(encryptedMessageContentBase64)) {
                 Log.e(TAG, "Base64 encoding of encrypted text message failed.");
-                throw new Exception("Base64 encoding failed."); // Throw to catch below
+                throw new Exception("Base64 encoding failed.");
             }
-
-            Log.d(TAG, "Text message encrypted and Base64 encoded. Base64 length: " + encryptedMessageContentBase64.length());
+            Log.d(TAG, "Text message encrypted and Base64 encoded. Encrypted Base64 length: " + encryptedMessageContentBase64.length());
         } catch (Exception e) { // Catch any encryption or encoding errors
             Log.e(TAG, "Failed to encrypt/encode text message", e);
-            Toast.makeText(this, "Failed to encrypt message.", Toast.LENGTH_SHORT).show();
+            runOnUiThread(() -> Toast.makeText(ChatPageActivity.this, "Failed to encrypt message.", Toast.LENGTH_SHORT).show());
+            // We don't have a MessageEntity in Room yet to mark as failed,
+            // but the user saw a toast. They can retry later if implemented.
             return; // Do not send if encryption/encoding fails
         }
         // --- *** END ENCRYPTION *** ---
 
 
-        // Create MessageEntity for Room (store the *encrypted Base64 string* and use local timestamp)
+        // 2. Create MessageEntity for Room (store the *encrypted Base64 string* and use local timestamp)
         MessageEntity messageToSaveLocally = new MessageEntity();
         messageToSaveLocally.setFirebaseMessageId(messagePushId);
-        messageToSaveLocally.setOwnerUserId(messageSenderID);
-        messageToSaveLocally.setMessage(encryptedMessageContentBase64); // Store the encrypted Base64 string <-- MODIFIED
+        messageToSaveLocally.setOwnerUserId(messageSenderID); // Owner is the current logged-in user (sender)
+        messageToSaveLocally.setMessage(encryptedMessageContentBase64); // Store the encrypted Base64 string
         messageToSaveLocally.setType("text");
-        messageToSaveLocally.setFrom(messageSenderID);
-        messageToSaveLocally.setTo(messageReceiverID);
+        messageToSaveLocally.setFrom(messageSenderID); // Sender is me
+        messageToSaveLocally.setTo(messageReceiverID); // Receiver is the chat partner
         messageToSaveLocally.setSendTime(sendTime);
-        messageToSaveLocally.setSeen(false);
+        messageToSaveLocally.setSeen(false); // Not seen yet
         messageToSaveLocally.setSeenTime("");
-        messageToSaveLocally.setStatus("pending");
-        messageToSaveLocally.setTimestamp(localTimestamp);
+        messageToSaveLocally.setStatus("pending"); // Initially pending
+        messageToSaveLocally.setTimestamp(localTimestamp); // Use local timestamp for initial order
+        messageToSaveLocally.setScheduledTime(null); // Not a scheduled message
+
+        // *** SET THE NEW displayEffect FIELD FOR ROOM ***
+        // Set based on the flag passed to the method
+        messageToSaveLocally.setDisplayEffect(isInvisibleInk ? "invisible_ink" : "none");
+        // The 'isRevealed' field defaults to false in the constructor, which is fine for a new message
+        // (even for the sender's copy, although it's not really used on the sender's side for display effect).
+        // *** END SET FIELD ***
 
 
-        // --- Insert into Room DB first with "pending" status (runs on background thread) ---
+        // 3. Insert into Room DB first with "pending" status (runs on background thread)
         databaseWriteExecutor.execute(() -> {
             try {
                 messageDao.insertMessage(messageToSaveLocally);
-                Log.d(TAG, "Inserted pending text message into Room (encrypted Base64) for owner " + messageSenderID + ": " + messagePushId + ", Local Timestamp: " + localTimestamp); // Updated log
+                Log.d(TAG, "Inserted pending text message into Room (encrypted Base64) for owner " + messageSenderID + ": " + messagePushId + ", Local Timestamp: " + localTimestamp + ", Effect: " + messageToSaveLocally.getDisplayEffect()); // Updated log
             } catch (Exception e) {
-                Log.e(TAG, "Error inserting pending message into Room: " + messagePushId, e);
+                Log.e(TAG, "Error inserting pending text message into Room: " + messagePushId, e);
                 runOnUiThread(() -> Toast.makeText(ChatPageActivity.this, "Error saving message locally.", Toast.LENGTH_SHORT).show());
-                // Proceeding to Firebase might be better if Room save is non-critical.
+                // Continue attempting to send to Firebase even if local save failed
             }
 
 
-            // --- Send message to Firebase (runs on background thread after Room insert) ---
+            // 4. Send message to Firebase (runs on background thread after Room insert initiated)
+            // Use the push ID generated earlier
             DatabaseReference messagePathRef = rootRef.child("Messages").child(conversationId).child(messagePushId);
 
             Map<String, Object> messageFirebaseBody = new HashMap<>();
-            messageFirebaseBody.put("message", encryptedMessageContentBase64); // Send the encrypted Base64 string <-- MODIFIED
+            messageFirebaseBody.put("message", encryptedMessageContentBase64); // Send the encrypted Base64 string
             messageFirebaseBody.put("type", "text");
             messageFirebaseBody.put("from", messageSenderID);
             messageFirebaseBody.put("to", messageReceiverID);
-            messageFirebaseBody.put("seen", false);
+            messageFirebaseBody.put("seen", false); // Always send as not seen by default
             messageFirebaseBody.put("seenTime", "");
-            messageFirebaseBody.put("sendTime", sendTime);
-            messageFirebaseBody.put("timestamp", firebaseTimestamp);
+            messageFirebaseBody.put("sendTime", sendTime); // Use local formatted time
+            messageFirebaseBody.put("timestamp", firebaseTimestamp); // Use Firebase server timestamp
 
+
+            // *** ADD THE NEW displayEffect FIELD FOR FIREBASE ***
+            // Send based on the flag passed to the method
+            messageFirebaseBody.put("displayEffect", isInvisibleInk ? "invisible_ink" : "none");
+            // Do NOT send 'isRevealed' to Firebase, it's a local state.
+            // *** END ADD FIELD ***
 
             messagePathRef.setValue(messageFirebaseBody).addOnCompleteListener(task -> {
                 Log.d(TAG, "Firebase setValue for text message " + messagePushId + " completed. Success: " + task.isSuccessful());
 
                 if (task.isSuccessful()) {
                     // --- Update Chat Summaries for BOTH users ---
-                    // Pass the encrypted Base64 string for the preview
+                    // For chat summary list, the preview text is usually the actual message content (decrypted).
+                    // Using the original *unencrypted* text for the summary preview is easiest and common.
+                    // The 'displayEffect' is only for the full message view.
+                    String summaryPreview = messageText; // Use original text for summary preview
+
+                    // Optional: If you want the summary list to say "[Invisible Message]" for Invisible Ink
+                    if (isInvisibleInk) {
+                        summaryPreview = "[Invisible Text Message]";
+                    }
+                    // Or better: just use the actual text preview even for invisible ink in the list,
+                    // as the list itself doesn't apply the effect. Let's revert to using original text.
+                    summaryPreview = messageText; // Use original text for summary preview
+
+
                     updateChatSummaryForUser(
                             messageSenderID, // Owner 1 (Sender)
                             messageReceiverID, // Partner 1 (Receiver)
                             conversationId,
                             messagePushId,
-                            encryptedMessageContentBase64, // Encrypted preview for sender's summary <-- MODIFIED
+                            summaryPreview, // Use original text or placeholder for summary preview
                             "text", // Message Type
-                            firebaseTimestamp,
+                            firebaseTimestamp, // Use Firebase timestamp for summary order
                             messageSenderID // Sender of THIS message
                     );
 
-                    // For the receiver's summary, use the same encrypted preview
+                    // For the receiver's summary, use the same preview
                     updateChatSummaryForUser(
                             messageReceiverID, // Owner 2 (Receiver)
                             messageSenderID, // Partner 2 (Sender)
                             conversationId,
                             messagePushId,
-                            encryptedMessageContentBase64, // Encrypted preview for receiver's summary <-- MODIFIED
+                            summaryPreview, // Use original text or placeholder for summary preview
                             "text", // Message Type
-                            firebaseTimestamp,
+                            firebaseTimestamp, // Use Firebase timestamp for summary order
                             messageSenderID // Sender of THIS message
                     );
                     // --- END Update Chat Summaries ---
 
 
-                    // *** NEW: Send Push Notification with Correct Sender Name ***
+                    // *** NEW: Send Push Notification ***
                     Log.d(TAG, "Firebase text message sent. Calling sendPushNotification.");
                     String senderDisplayNameForNotification = (currentUserName != null && !currentUserName.isEmpty()) ? currentUserName : "A User";
+                    String notificationText = messageText; // Use the ORIGINAL, UNENCRYPTED message text for notification preview
+
+                    // Optional: Modify notification text if you don't want the content in the notif
+                    if (isInvisibleInk) {
+                        // notificationText = "New Invisible Message from " + senderDisplayNameForNotification;
+                        // Or show a generic placeholder in the notif
+                        notificationText = "[New Message]"; // Or "[New Invisible Message]"
+                    } else {
+                        // For normal messages, show the decrypted preview in notif
+                        // (Assuming sendPushNotification decrypts or gets decrypted text)
+                        // Your current sendPushNotification takes the original text directly, which is fine here.
+                        notificationText = messageText;
+                    }
                     sendPushNotification(
-                            messageReceiverID,
-                            "New Message from " + senderDisplayNameForNotification,
-                            messageText // Use the ORIGINAL, UNENCRYPTED message text for notification preview
+                            messageReceiverID, // Recipient UID
+                            "New Message from " + senderDisplayNameForNotification, // Title
+                            notificationText, // Content
+                            "text", // <<< Pass message type
+                            conversationId, // <<< Pass conversationId
+                            null, // <<< Pass null for sessionId (not applicable for text)
+                            messagePushId // <<< Pass messageId (optional)
                     );
                     // *** END NEW ***
 
 
                     // --- Update status in Room DB for the SENDER's copy ---
+                    // This happens on the background executor
                     databaseWriteExecutor.execute(() -> {
-                        messageDao.updateMessageStatus(messagePushId, "sent", messageSenderID);
-                        Log.d(TAG, "Updated status to 'sent' in Room for owner " + messageSenderID + " for message: " + messagePushId);
+                        // Find the message again in Room using its Firebase ID and Owner ID
+                        MessageEntity sentMessage = messageDao.getMessageByFirebaseId(messagePushId, messageSenderID);
+                        if (sentMessage != null) {
+                            // Update its status to 'sent'
+                            sentMessage.setStatus("sent");
+                            // Re-insert/update it in Room (using REPLACE strategy)
+                            messageDao.insertMessage(sentMessage);
+                            Log.d(TAG, "Updated status to 'sent' in Room for owner " + messageSenderID + " for message: " + messagePushId);
+                        } else {
+                            Log.e(TAG, "Sent message " + messagePushId + " not found in Room after Firebase success. Cannot update status.");
+                            // This shouldn't happen if the initial insert succeeded, but good to log.
+                        }
                     });
 
-                    runOnUiThread(() -> messageInputText.setText("")); // Clear input only on main thread after successful async start
+                    // Clear input text field on Main Thread after successful Firebase initiation
+                    runOnUiThread(() -> messageInputText.setText(""));
 
                 } else {
                     // Firebase write failed. Update status in Room to "failed".
                     Log.e(TAG, "Firebase setValue failed for text message " + messagePushId, task.getException());
                     databaseWriteExecutor.execute(() -> {
-                        messageDao.updateMessageStatus(messagePushId, "failed", messageSenderID);
-                        Log.d(TAG, "Updated status to 'failed' in Room for owner " + messageSenderID + " for message: " + messagePushId);
+                        // Find the message again in Room
+                        MessageEntity failedMessage = messageDao.getMessageByFirebaseId(messagePushId, messageSenderID);
+                        if (failedMessage != null) {
+                            // Update its status to 'failed'
+                            failedMessage.setStatus("failed");
+                            // Re-insert/update it in Room
+                            messageDao.insertMessage(failedMessage);
+                            Log.d(TAG, "Updated status to 'failed' in Room for owner " + messageSenderID + " for message: " + messagePushId);
+                        } else {
+                            Log.e(TAG, "Failed message " + messagePushId + " not found in Room after Firebase failure. Cannot update status.");
+                        }
                     });
                     runOnUiThread(() -> Toast.makeText(ChatPageActivity.this, "Failed to send message", Toast.LENGTH_SHORT).show());
                 }
-            }); // End of addOnCompleteListener
-        }); // End of outer databaseWriteExecutor
+            }); // End of Firebase setValue addOnCompleteListener
+        }); // End of outer databaseWriteExecutor (Room insert and Firebase send)
     }
+// --- End Modified Send Text Message ---
+
+// Keep sendImageMessage() method as is for now. It won't handle 'invisible_ink' effect.
+// Keep other methods as they are...
     // --- End Send Text Message ---
 
 
-    // --- Modified Method to Send Image Message (Includes Encryption) ---
-    private void sendImageMessage(String base64ImageContent) { // Input is raw Base64 image string
+    // Inside ChatPageActivity class
+
+    // --- Modified Method to Send Image Message (Includes Encryption and Invisible Ink Flag) ---
+    private void sendImageMessage(String base64ImageContent, boolean isInvisibleInk) { // *** MODIFIED SIGNATURE: Added boolean isInvisibleInk ***
+        Log.d(TAG, "sendImageMessage called. Base64 length: " + base64ImageContent.length() + ", Invisible Ink: " + isInvisibleInk);
+
         if (TextUtils.isEmpty(base64ImageContent)) {
             Toast.makeText(this, "Image data is empty!", Toast.LENGTH_SHORT).show();
-            return;
+            Log.w(TAG, "sendImageMessage called with empty data.");
+            return; // Should not happen if attemptSendMessage validates
         }
 
         // --- *** CHECK if Secure Chat is Enabled (Keys are available) *** ---
-        // Check dynamically here
-        boolean isSecureChatAvailable = YourKeyManager.getInstance().isPrivateKeyAvailable() && YourKeyManager.getInstance().hasConversationKey(conversationId); // *** MODIFIED CHECK ***
+        // Keep this check here as a final safeguard.
+        boolean isSecureChatAvailable = YourKeyManager.getInstance().isPrivateKeyAvailable() && YourKeyManager.getInstance().hasConversationKey(conversationId);
+        SecretKey conversationAESKey = YourKeyManager.getInstance().getConversationKey(conversationId);
 
-        // Get the *single* conversation key from KeyManager
-        SecretKey conversationAESKey = YourKeyManager.getInstance().getConversationKey(conversationId); // *** MODIFIED ***
-
-        if (!isSecureChatAvailable || conversationAESKey == null) { // Check if key is null explicitly
-            Log.w(TAG, "Cannot send image message: Secure chat keys are not available.");
-            if (!YourKeyManager.getInstance().isPrivateKeyAvailable()) {
-                Toast.makeText(this, "Your account is not unlocked for secure chat.", Toast.LENGTH_SHORT).show();
-            } else {
-                Toast.makeText(this, "Secure chat key missing for this conversation.", Toast.LENGTH_SHORT).show();
-            }
-            return; // Do not proceed if keys are not available
+        if (!isSecureChatAvailable || conversationAESKey == null) {
+            Log.w(TAG, "sendImageMessage blocked: Secure chat keys are not available.");
+            // Toast or UI disabling is handled by attemptSendMessage/onResume.
+            runOnUiThread(() -> Toast.makeText(ChatPageActivity.this, "Secure chat not available, cannot send image.", Toast.LENGTH_SHORT).show());
+            return;
         }
         // --- *** END Check *** ---
 
@@ -917,70 +1059,80 @@ public class ChatPageActivity extends AppCompatActivity implements
         Object firebaseTimestamp = ServerValue.TIMESTAMP;
         long localTimestamp = System.currentTimeMillis();
 
-        DatabaseReference messagesRef = rootRef.child("Messages").child(conversationId).push(); // Use conversationId here!
+        // 1. Generate Firebase Push ID FIRST
+        DatabaseReference messagesRef = rootRef.child("Messages").child(conversationId).push();
         String messagePushId = messagesRef.getKey();
 
         if (messagePushId == null) {
             Log.e(TAG, "Failed to generate Firebase push key for image message");
-            Toast.makeText(this, "Error sending image message", Toast.LENGTH_SHORT).show();
+            runOnUiThread(() -> Toast.makeText(ChatPageActivity.this, "Error sending image message", Toast.LENGTH_SHORT).show());
             return;
         }
-        Log.d(TAG, "Generated Firebase push ID for image: " + messagePushId);
+        Log.d(TAG, "Generated Firebase push ID for image: " + messagePushId + " (Invisible Ink: " + isInvisibleInk + ")");
 
-        // --- *** ENCRYPT the image content (Base64 string) and get the Base64 STRING *** ---
-        byte[] encryptedBytes; // Will get raw bytes from encryption
-        String encryptedImageContentBase64; // Will be the Base64 String for storage/sending
+
+        // --- *** ENCRYPT the image content (Base64 string) *** ---
+        // Encrypt the *raw* Base64 image string.
+        byte[] encryptedBytes;
+        String encryptedImageContentBase64;
         try {
             // The raw Base64 image string is the *message content* to be encrypted
-            encryptedBytes = CryptoUtils.encryptMessageWithAES(base64ImageContent, conversationAESKey); // <-- MODIFIED (Input is String, Output is byte[])
+            encryptedBytes = CryptoUtils.encryptMessageWithAES(base64ImageContent, conversationAESKey); // Encrypt raw Base64 string
 
             // Immediately encode this byte[] into a Base64 String using CryptoUtils.bytesToBase64
-            encryptedImageContentBase64 = CryptoUtils.bytesToBase64(encryptedBytes); // *** NEW STEP ***
+            encryptedImageContentBase64 = CryptoUtils.bytesToBase64(encryptedBytes);
 
             if (TextUtils.isEmpty(encryptedImageContentBase64)) { // Defensive check
                 Log.e(TAG, "Base64 encoding of encrypted image message failed.");
-                throw new Exception("Base64 encoding failed."); // Throw to catch below
+                throw new Exception("Base64 encoding failed.");
             }
-
-            Log.d(TAG, "Image message encrypted and Base64 encoded. Base64 length: " + encryptedImageContentBase64.length());
+            Log.d(TAG, "Image message encrypted and Base64 encoded. Encrypted Base64 length: " + encryptedImageContentBase64.length());
         } catch (Exception e) { // Catch any encryption or encoding errors
             Log.e(TAG, "Failed to encrypt/encode image message", e);
-            Toast.makeText(this, "Failed to encrypt image message.", Toast.LENGTH_SHORT).show();
+            runOnUiThread(() -> Toast.makeText(ChatPageActivity.this, "Failed to encrypt image message.", Toast.LENGTH_SHORT).show());
             return; // Do not send if encryption/encoding fails
         }
         // --- *** END ENCRYPTION *** ---
 
 
-        // Create MessageEntity for Room (store the *encrypted Base64 string* and use local timestamp)
+        // 2. Create MessageEntity for Room (store the *encrypted Base64 string* and use local timestamp)
         MessageEntity messageToSaveLocally = new MessageEntity();
         messageToSaveLocally.setFirebaseMessageId(messagePushId);
-        messageToSaveLocally.setOwnerUserId(messageSenderID);
-        messageToSaveLocally.setMessage(encryptedImageContentBase64); // Store the encrypted Base64 string <-- MODIFIED
+        messageToSaveLocally.setOwnerUserId(messageSenderID); // Owner is the current logged-in user (sender)
+        messageToSaveLocally.setMessage(encryptedImageContentBase64); // Store the encrypted Base64 string
         messageToSaveLocally.setType("image"); // Type is image
-        messageToSaveLocally.setFrom(messageSenderID);
-        messageToSaveLocally.setTo(messageReceiverID);
+        messageToSaveLocally.setFrom(messageSenderID); // Sender is me
+        messageToSaveLocally.setTo(messageReceiverID); // Receiver is chat partner
         messageToSaveLocally.setSendTime(sendTime);
-        messageToSaveLocally.setSeen(false);
+        messageToSaveLocally.setSeen(false); // Not seen yet
         messageToSaveLocally.setSeenTime("");
-        messageToSaveLocally.setStatus("pending");
+        messageToSaveLocally.setStatus("pending"); // Initially pending
         messageToSaveLocally.setTimestamp(localTimestamp);
+        messageToSaveLocally.setScheduledTime(null); // Not scheduled
+
+        // *** SET THE NEW displayEffect FIELD FOR ROOM ***
+        // Set based on the flag passed to the method
+        messageToSaveLocally.setDisplayEffect(isInvisibleInk ? "invisible_ink" : "none");
+        // The 'isRevealed' field defaults to false in the constructor, which is fine for a new message
+        // *** END SET FIELD ***
 
 
-        // --- Insert into Room DB first with "pending" status (runs on background thread) ---
+        // 3. Insert into Room DB first with "pending" status (runs on background thread)
         databaseWriteExecutor.execute(() -> {
             try {
                 messageDao.insertMessage(messageToSaveLocally);
-                Log.d(TAG, "Inserted pending image message into Room (encrypted Base64) for owner " + messageSenderID + ": " + messagePushId + ", Local Timestamp: " + localTimestamp); // Updated log
+                Log.d(TAG, "Inserted pending image message into Room (encrypted Base64) for owner " + messageSenderID + ": " + messagePushId + ", Local Timestamp: " + localTimestamp + ", Effect: " + messageToSaveLocally.getDisplayEffect()); // Updated log
             } catch (Exception e) {
                 Log.e(TAG, "Error inserting pending image message into Room: " + messagePushId, e);
                 runOnUiThread(() -> Toast.makeText(ChatPageActivity.this, "Error saving image locally.", Toast.LENGTH_SHORT).show());
+                // Continue attempting to send to Firebase
             }
 
-            // --- Send message to Firebase (runs on background thread after Room insert) ---
+            // 4. Send message to Firebase (runs on background thread after Room insert initiated)
             DatabaseReference messagePathRef = rootRef.child("Messages").child(conversationId).child(messagePushId);
 
             Map<String, Object> messageFirebaseBody = new HashMap<>();
-            messageFirebaseBody.put("message", encryptedImageContentBase64); // Send the encrypted Base64 string <-- MODIFIED
+            messageFirebaseBody.put("message", encryptedImageContentBase64); // Send the encrypted Base64 string
             messageFirebaseBody.put("type", "image");
             messageFirebaseBody.put("from", messageSenderID);
             messageFirebaseBody.put("to", messageReceiverID);
@@ -989,19 +1141,38 @@ public class ChatPageActivity extends AppCompatActivity implements
             messageFirebaseBody.put("sendTime", sendTime);
             messageFirebaseBody.put("timestamp", firebaseTimestamp);
 
+            // *** ADD THE NEW displayEffect FIELD FOR FIREBASE ***
+            // Send based on the flag passed to the method
+            messageFirebaseBody.put("displayEffect", isInvisibleInk ? "invisible_ink" : "none");
+            // Do NOT send 'isRevealed' to Firebase, it's a local state.
+            // *** END ADD FIELD ***
+
 
             messagePathRef.setValue(messageFirebaseBody).addOnCompleteListener(task -> {
                 Log.d(TAG, "Firebase setValue for image message " + messagePushId + " completed. Success: " + task.isSuccessful());
 
                 if (task.isSuccessful()) {
                     // --- Update Chat Summaries for BOTH users ---
-                    // Use "[Image]" or a similar placeholder for the preview content in the summary for IMAGE type
+                    // For image summary, use "[Image]" placeholder. This is not affected by Invisible Ink status in the list.
+                    String summaryPreview ;
+                    if (isInvisibleInk) {
+                        // Use a specific placeholder for Invisible Ink image messages in the summary
+                        summaryPreview = "[Invisible Image Message]"; // *** CHANGED ***
+                        Log.d(TAG, "Setting summary preview to '[Invisible Image Message]' for Firebase.");
+                    } else {
+                        // For normal image messages, use the standard placeholder
+                        summaryPreview = "[Image]"; // *** CHANGED/CONSISTENT ***
+                        Log.d(TAG, "Setting summary preview to '[Image]' for Firebase.");
+                    }
+                    // *** END MODIFY ***
+
+
                     updateChatSummaryForUser(
                             messageSenderID,
                             messageReceiverID,
                             conversationId,
                             messagePushId,
-                            "[Image]", // Placeholder preview for sender's summary list (images typically don't show decrypted preview in list)
+                            summaryPreview, // Placeholder preview for sender's summary list
                             "image",
                             firebaseTimestamp,
                             messageSenderID
@@ -1013,7 +1184,7 @@ public class ChatPageActivity extends AppCompatActivity implements
                             messageSenderID,
                             conversationId,
                             messagePushId,
-                            "[Image]", // Placeholder preview for receiver's summary list
+                            summaryPreview, // Placeholder preview for receiver's summary list
                             "image",
                             firebaseTimestamp,
                             messageSenderID
@@ -1021,36 +1192,64 @@ public class ChatPageActivity extends AppCompatActivity implements
                     // --- END Update Chat Summaries ---
 
 
-                    // *** NEW: Send Push Notification with Correct Sender Name ***
+                    // *** NEW: Send Push Notification ***
                     Log.d(TAG, "Firebase image message sent. Calling sendPushNotification.");
                     String senderDisplayNameForNotification = (currentUserName != null && !currentUserName.isEmpty()) ? currentUserName : "A User";
+                    String notificationText = "[Image]"; // Placeholder for image content in notification
+
+                    // Optional: Modify notification text if it was Invisible Ink image
+                    if (isInvisibleInk) {
+                        notificationText = "[New Image]"; // Or "[New Invisible Ink Image]"
+                        Log.d(TAG, "Adjusting notification text for Invisible Ink image message notification.");
+                    }
+
                     sendPushNotification(
-                            messageReceiverID,
-                            "New Image from " + senderDisplayNameForNotification,
-                            "[Image]" // Placeholder for image content in notification
+                            messageReceiverID, // Recipient UID
+                            "New Image from " + senderDisplayNameForNotification, // Title
+                            notificationText, // Content
+                            "image", // <<< Pass message type
+                            conversationId, // <<< Pass conversationId
+                            null, // <<< Pass null for sessionId (not applicable for image)
+                            messagePushId // <<< Pass messageId (optional)
                     );
                     // *** END NEW ***
 
+
                     // --- Update status in Room DB for the SENDER's copy ---
                     databaseWriteExecutor.execute(() -> {
-                        messageDao.updateMessageStatus(messagePushId, "sent", messageSenderID);
-                        Log.d(TAG, "Updated status to 'sent' in Room for owner " + messageSenderID + " for message: " + messagePushId);
+                        // Find message in Room and update status
+                        MessageEntity sentMessage = messageDao.getMessageByFirebaseId(messagePushId, messageSenderID);
+                        if (sentMessage != null) {
+                            sentMessage.setStatus("sent");
+                            messageDao.insertMessage(sentMessage); // Use REPLACE strategy
+                            Log.d(TAG, "Updated status to 'sent' in Room for owner " + messageSenderID + " for image message: " + messagePushId);
+                        } else {
+                            Log.e(TAG, "Sent image message " + messagePushId + " not found in Room after Firebase success. Cannot update status.");
+                        }
                     });
-
+                    // No EditText to clear for images, only image preview cleared by attemptSendMessage
                 } else {
                     // Firebase write failed. Update status in Room to "failed".
                     Log.e(TAG, "Firebase setValue failed for image message " + messagePushId, task.getException());
                     databaseWriteExecutor.execute(() -> {
-                        messageDao.updateMessageStatus(messagePushId, "failed", messageSenderID);
-                        Log.d(TAG, "Updated status to 'failed' in Room for owner " + messageSenderID + " for message: " + messagePushId);
+                        // Find message in Room and update status
+                        MessageEntity failedMessage = messageDao.getMessageByFirebaseId(messagePushId, messageSenderID);
+                        if (failedMessage != null) {
+                            failedMessage.setStatus("failed");
+                            messageDao.insertMessage(failedMessage); // Use REPLACE strategy
+                            Log.d(TAG, "Updated status to 'failed' in Room for owner " + messageSenderID + " for image message: " + messagePushId);
+                        } else {
+                            Log.e(TAG, "Failed image message " + messagePushId + " not found in Room after Firebase failure. Cannot update status.");
+                        }
                     });
                     runOnUiThread(() -> Toast.makeText(ChatPageActivity.this, "Failed to send image", Toast.LENGTH_SHORT).show());
                 }
-            }); // End of addOnCompleteListener
+            }); // End of Firebase setValue addOnCompleteListener
         }); // End of outer databaseWriteExecutor
     }
-    // --- End Send Image Message ---
+// --- End Modified Send Image Message ---
 
+// Keep other methods as they are...
 
     // --- Modify attachMessageListener ---
     // This method syncs messages FROM Firebase TO Room.
@@ -1058,73 +1257,134 @@ public class ChatPageActivity extends AppCompatActivity implements
     // --- Modified attachMessageListener ---
     // This method syncs messages FROM Firebase TO Room.
     // MessageEntity.message will store the Base64 string received from Firebase.
+    // Inside ChatPageActivity.java
+
+    // Inside ChatPageActivity.java class body { ... }
+
+
+    // --- Modified attachMessageListener ---
+    // This method syncs messages FROM Firebase TO Room.
+    // MessageEntity.message will store the Base64 string received from Firebase or plaintext for system messages.
+    // It also handles processing incoming messages for notifications and potentially loading keys.
     private void attachMessageListener() {
-        if (TextUtils.isEmpty(conversationId) || rootRef == null || db == null) { // Add db null check
-            Log.w(TAG, "Cannot attach message listener: ConversationId, rootRef, or db is null.");
-            // Optionally show a toast or handle this critical error appropriately
-            // runOnUiThread(() -> Toast.makeText(this, "Error: Cannot load chat messages.", Toast.LENGTH_LONG).show());
+        // Ensure conversationId, rootRef, and db are initialized before attaching the listener
+        if (TextUtils.isEmpty(conversationId) || rootRef == null || db == null) {
+            Log.w(TAG, "Cannot attach message listener: ConversationId, rootRef, or db is null. Conversation ID: " + conversationId);
             return;
         }
 
+        // Check if the listener is already attached to prevent attaching duplicates
         if (messageListener == null) {
+            // Get the Firebase Database reference for this specific conversation's messages node
             DatabaseReference conversationRef = rootRef.child("Messages").child(conversationId);
             Log.d(TAG, "Attaching Firebase listener for chat path: Messages/" + conversationId);
 
 
+            // Create the ChildEventListener implementation
             messageListener = new ChildEventListener() {
                 @Override
                 public void onChildAdded(@NonNull DataSnapshot snapshot, @Nullable String previousChildName) {
                     Log.d(TAG, "onChildAdded triggered for " + snapshot.getKey() + " in conv " + conversationId);
-                    Map<String, Object> messageData = (Map<String, Object>) snapshot.getValue();
-                    String firebaseMessageId = snapshot.getKey();
+                    // Get the message data from the snapshot as a HashMap to handle potential casting and missing fields safely
+                    Map<String, Object> messageDataMap = (Map<String, Object>) snapshot.getValue(); // Use Map<String, Object> for safety
+                    String firebaseMessageId = snapshot.getKey(); // This is the unique Firebase push key
 
-                    if (messageData != null && firebaseMessageId != null) {
-                        // Run Room DB operations on a background thread
+                    if (messageDataMap != null && firebaseMessageId != null) {
+                        // Run Room DB operations and potentially blocking tasks like decryption/notification sending on a background thread
                         databaseWriteExecutor.execute(() -> {
-                            try { // Keep this try-catch block
+                            try { // Keep this try-catch block for the whole executor task running on the background thread
 
-                                // --- NEW: Check if this message is marked as deleted for me ---
-                                // Ensure db is not null before accessing DAO - already checked at method start, but safer here too
+                                // --- NEW: Check if this message is marked as deleted for the current user locally ---
+                                // Ensure db and messageSenderID are not null before accessing DAO
                                 if (db == null || messageSenderID == null) {
                                     Log.e(TAG, "onChildAdded (Executor): ChatDatabase or messageSenderID instance is null. Cannot check for locally deleted messages.");
-                                    return; // Skip processing this message
+                                    return; // Skip processing this message if prerequisites are missing
                                 }
-                                DeletedMessageIdDao deletedMessageIdDao = db.deletedMessageIdDao(); // Get the new DAO
+                                // Get the DAO for checking locally deleted messages
+                                DeletedMessageIdDao deletedMessageIdDao = db.deletedMessageIdDao();
 
                                 // Use the check method from the new DAO
                                 boolean isLocallyDeleted = deletedMessageIdDao.isMessageDeletedForUser(messageSenderID, firebaseMessageId);
 
                                 if (isLocallyDeleted) {
                                     Log.d(TAG, "onChildAdded (Executor): Message " + firebaseMessageId + " is marked as locally deleted for owner " + messageSenderID + ". Skipping insertion into main table.");
-                                    return; // IMPORTANT: Skip inserting this message into the main table
+                                    return; // IMPORTANT: Skip inserting this message into the main messages table in Room
                                 }
-                                // --- END NEW ---
+                                // --- END NEW: Check for locally deleted messages ---
+
 
                                 // --- Existing code below this point runs ONLY IF the message is NOT locally deleted ---
 
+                                // Create a new MessageEntity object based on the Firebase snapshot data
                                 MessageEntity roomMessage = new MessageEntity();
+                                // Default values for displayEffect ("none") and isRevealed (false) are set in the MessageEntity constructor.
+
+                                // Populate fields from Firebase snapshot
                                 roomMessage.setFirebaseMessageId(firebaseMessageId);
-                                roomMessage.setOwnerUserId(messageSenderID); // Owner is the current logged-in user
+                                roomMessage.setOwnerUserId(messageSenderID); // The owner is the current logged-in user (whose DB this message is for)
 
-                                // Get fields from Firebase snapshot and populate the MessageEntity
-                                roomMessage.setMessage((String) messageData.get("message")); // Store the Base64 String from Firebase
-                                roomMessage.setType((String) messageData.get("type"));
-                                roomMessage.setFrom((String) messageData.get("from"));
-                                roomMessage.setTo((String) messageData.get("to"));
-                                roomMessage.setSendTime((String) messageData.get("sendTime"));
-                                Boolean seenStatus = (Boolean) messageData.get("seen");
-                                roomMessage.setSeen(seenStatus != null ? seenStatus : false);
-                                roomMessage.setSeenTime((String) messageData.get("seenTime"));
-                                String statusStr = (String) messageData.get("status");
-                                // Determine initial status based on who sent it if status is not set
+                                // Safely get values from the Firebase map, handling potential nulls or incorrect types
+                                roomMessage.setMessage((String) messageDataMap.get("message")); // Store the Base64 String, plaintext, or placeholder from Firebase
+                                roomMessage.setType((String) messageDataMap.get("type"));
+                                roomMessage.setFrom((String) messageDataMap.get("from"));
+                                roomMessage.setTo((String) messageDataMap.get("to"));
+                                roomMessage.setSendTime((String) messageDataMap.get("sendTime"));
+
+                                // Get seen status (boolean) and handle potential null
+                                Object seenObj = messageDataMap.get("seen");
+                                boolean seenStatus = (seenObj instanceof Boolean) ? (Boolean) seenObj : false; // Default to false if null or not boolean
+                                roomMessage.setSeen(seenStatus);
+                                roomMessage.setSeenTime((String) messageDataMap.get("seenTime"));
+
+                                // Get status (string)
+                                String statusStr = (String) messageDataMap.get("status");
+                                // Determine initial status if not set in Firebase (e.g., for older messages or certain types)
                                 roomMessage.setStatus(!TextUtils.isEmpty(statusStr) ? statusStr : (roomMessage.getFrom().equals(messageSenderID) ? "sent" : "received"));
-                                roomMessage.setScheduledTime((String) messageData.get("scheduledTime")); // Get scheduledTime
 
-                                Long timestampLong = null; Object timestampObj = messageData.get("timestamp");
+                                // Get scheduledTime (string)
+                                roomMessage.setScheduledTime((String) messageDataMap.get("scheduledTime")); // Get scheduledTime from Firebase
+
+                                // Get timestamp (long) and handle potential null or incorrect type (Firebase might send double)
+                                Long timestampLong = null; Object timestampObj = messageDataMap.get("timestamp");
                                 if (timestampObj instanceof Long) { timestampLong = (Long) timestampObj; }
                                 else if (timestampObj instanceof Double) { timestampLong = ((Double) timestampObj).longValue(); }
                                 // Use the Firebase timestamp if available and valid, otherwise use current local time
                                 roomMessage.setTimestamp(timestampLong != null && timestampLong > 0 ? timestampLong : System.currentTimeMillis());
+
+
+                                // *** EXISTING: Read displayEffect from Firebase and set in RoomMessage ***
+                                String firebaseDisplayEffect = (String) messageDataMap.get("displayEffect");
+                                // Default to "none" if the field is missing or empty in Firebase
+                                roomMessage.setDisplayEffect(!TextUtils.isEmpty(firebaseDisplayEffect) ? firebaseDisplayEffect : "none");
+                                // *** END EXISTING ***
+
+
+                                // *** NEW: Read conversationId, drawingSessionId, and name from Firebase and set in MessageEntity ***
+                                // Do this for ANY message type, as these fields might be present in the Firebase payload.
+                                String firebaseConversationId = (String) messageDataMap.get("conversationId");
+                                String firebaseDrawingSessionId = (String) messageDataMap.get("drawingSessionId"); // This Firebase field stores the session ID for both group and 1:1 links
+                                String senderDisplayNameFromFirebase = (String) messageDataMap.get("name"); // This Firebase field stores the sender's display name
+
+                                roomMessage.setConversationId(firebaseConversationId); // Set the parsed conversationId
+                                roomMessage.setDrawingSessionId(firebaseDrawingSessionId); // Set the parsed drawingSessionId (stores session ID)
+                                roomMessage.setName(senderDisplayNameFromFirebase); // Set the parsed sender name
+                                // --- END NEW ---
+
+
+                                // *** NEW: Initialize isRevealed for the RECIPIENT's copy of INCOMING INVISIBLE INK messages ***
+                                // If this message is incoming (to == messageSenderID) AND has the "invisible_ink" effect,
+                                // explicitly set isRevealed to false initially in Room.
+                                // For all other cases (normal messages, outgoing messages, system messages, etc.),
+                                // the default 'isRevealed = false' from the constructor is acceptable.
+                                if (roomMessage.getDisplayEffect().equals("invisible_ink") && roomMessage.getTo().equals(messageSenderID)) {
+                                    // This is an incoming Invisible Ink message for the current user (recipient)
+                                    roomMessage.setRevealed(false); // Explicitly set to false to ensure it's hidden on arrival
+                                    Log.d(TAG, "onChildAdded (Executor): Incoming Invisible Ink message (ID: " + firebaseMessageId + ", Type: " + roomMessage.getType() + ") for recipient " + messageSenderID + ". Setting isRevealed=false.");
+                                } else {
+                                    // For all other cases, the default isRevealed=false is fine.
+                                    // roomMessage.setRevealed(false); // Default is already false in constructor
+                                }
+                                // *** END NEW ***
 
 
                                 // Basic validation for essential fields before inserting
@@ -1133,364 +1393,427 @@ public class ChatPageActivity extends AppCompatActivity implements
                                     return; // Skip insertion if essential fields are missing
                                 }
 
+
                                 // --- Insert the message into main Room DB (INSERT OR REPLACE strategy) for the current user ---
-                                // Inserting here will trigger the LiveData observer -> forceRefreshDisplay() on Main Thread
-                                messageDao.insertMessage(roomMessage);
+                                // This will insert a new message or update an existing one with the same FirebaseMessageId and OwnerUserId.
+                                // Inserting here will trigger the LiveData observer -> forceRefreshDisplay() on Main Thread.
+                                messageDao.insertMessage(roomMessage); // Insert the entity with all populated fields
                                 Log.d(TAG, "Inserted/Updated message in main Room table: " + firebaseMessageId +
                                         " (onChildAdded), Owner: " + roomMessage.getOwnerUserId() +
-                                        ", Timestamp: " + roomMessage.getTimestamp() +
-                                        ", ScheduledTime (in Room): " + roomMessage.getScheduledTime());
-
-
-                                // --- NEW: Check if the incoming message is a system key change message ---
-                                // Only process this if it's an incoming message from the other user
-                                if ("system_key_change".equals(roomMessage.getType()) && roomMessage.getFrom().equals(messageReceiverID) && roomMessage.getTo().equals(messageSenderID)) {
-                                    Log.d(TAG, "onChildAdded (Executor): Received incoming system_key_change message. Triggering conversation key load attempt.");
-
-                                    // Trigger the conversation key load attempt if the user's private key is available.
-                                    // This method (attemptLoadConversationKeyAsync) needs to be implemented separately
-                                    // in ChatPageActivity to perform the Room/Firebase key loading/decryption.
-                                    // It needs access to Room DB (ConversationKeyDao) and Firebase (RootRef) and YourKeyManager.
-                                    // Since this code block is already on databaseWriteExecutor, calling
-                                    // attemptLoadConversationKeyAsync directly will keep it on the background thread.
-                                    if (YourKeyManager.getInstance().isPrivateKeyAvailable()) {
-                                        // Call the new helper method to attempt loading the key for this conversation
-                                        attemptLoadConversationKeyAsync(conversationId, messageSenderID); // Pass conversationId and current user ID (senderId)
-                                    } else {
-                                        Log.w(TAG, "onChildAdded (Executor): Received system_key_change, but user's private key is NOT available. Cannot load new key.");
-                                        // Messages will continue to show as failed until user unlocks account.
-                                    }
-                                }
-                                // --- END NEW: Check if the incoming message is a system key change message ---
+                                        ", Type: " + roomMessage.getType() +
+                                        ", Name: " + roomMessage.getName() + // Log name
+                                        ", Conv ID: " + roomMessage.getConversationId() + // Log Conv ID
+                                        ", Session ID: " + roomMessage.getDrawingSessionId() + // Log Session ID
+                                        ", Effect: " + roomMessage.getDisplayEffect() +
+                                        ", Revealed: " + roomMessage.isRevealed());
 
 
                                 // --- Handle Notification for Incoming Messages (only if not already notified/seen) ---
-                                // This logic is already in the executor, so it can block.
-                                // It needs the decrypted content for the notification text.
-                                // This block should also run ONLY IF the message was NOT locally deleted (handled by the check at the start).
-                                if (roomMessage.getTo().equals(messageSenderID) && roomMessage.getFrom().equals(messageReceiverID)) { // Incoming message
-                                    // Check if the activity is not currently resumed (i.e., user is not viewing this chat)
+                                // This block runs on the background executor.
+                                // Only send notification for messages addressed *to* the current user (incoming messages).
+                                if (roomMessage.getTo().equals(messageSenderID) && roomMessage.getFrom().equals(messageReceiverID)) { // Incoming message check
+                                    // Check if the activity is not currently in a resumed state (user is not viewing this chat)
                                     if (!getLifecycle().getCurrentState().isAtLeast(Lifecycle.State.RESUMED)) {
-                                        // Check if the message is not already seen (in Room)
-                                        // Removed placeholder NotifiedMessageStore check for simplicity/focus
-                                        if (!roomMessage.isSeen()) {
-                                            Log.d(TAG, "Incoming message " + firebaseMessageId + " received while activity is NOT RESUMED and not seen. Preparing notification.");
+                                        // Check if the message is not already marked as seen in Firebase (or in Room if your sync is fast)
+                                        // Relying on isSeen from Firebase snapshot is safer for preventing duplicate notifications.
+                                        Boolean firebaseSeenStatus = (Boolean) messageDataMap.get("seen"); // Get seen status directly from snapshot
+                                        boolean isSeenInFirebase = (firebaseSeenStatus != null) ? firebaseSeenStatus : false;
 
-                                            // --- Decrypt message content for Notification text ---
-                                            String notificationText = "[Message]"; // Default placeholder
-                                            String storedContentBase64 = roomMessage.getMessage(); // Get the Base64 from Room
+                                        // Only send notification if the message is NOT already seen (by this user/device)
+                                        if (!isSeenInFirebase) { // Check against Firebase seen status
+                                            Log.d(TAG, "Incoming message " + firebaseMessageId + " received while activity is NOT RESUMED and is NOT seen in Firebase. Preparing notification.");
 
-                                            // Attempt decryption ONLY IF it's an expected encrypted type AND content exists AND secure chat keys are available
-                                            boolean isExpectedEncryptedType = "text".equals(roomMessage.getType()) || "image".equals(roomMessage.getType());
-                                            boolean isSecureChatAvailableForNotification = YourKeyManager.getInstance().isPrivateKeyAvailable() && YourKeyManager.getInstance().hasConversationKey(conversationId); // Check private key and conversation key
+                                            // --- Decrypt message content or determine placeholder for Notification text ---
+                                            String notificationTextToSend = "[Message]"; // Default placeholder
+
+                                            // Get necessary info for decryption/content determination
+                                            String storedContentBase64 = roomMessage.getMessage(); // Get the Base64 string from Room (or plaintext for system)
+                                            String messageTypeForNotif = roomMessage.getType(); // Get the message type
+                                            String displayEffectForNotif = roomMessage.getDisplayEffect(); // Get display effect
+                                            // The sender's display name is needed for the notification title, we use messageReceiverName (chat partner's name)
+                                            String senderNameForNotification = messageReceiverName; // The sender of this incoming message is the chat partner
+
+                                            // --- Check message type and decrypt/format content ---
+                                            // This logic is similar to what forceRefreshDisplay does, but streamlined for notification text.
+                                            boolean isExpectedEncryptedType = "text".equals(messageTypeForNotif) || "image".equals(messageTypeForNotif) || "file".equals(messageTypeForNotif);
+                                            boolean isSecureChatAvailableForNotification = YourKeyManager.getInstance().isPrivateKeyAvailable() && YourKeyManager.getInstance().hasConversationKey(conversationId);
                                             SecretKey conversationAESKey = null;
                                             if (isSecureChatAvailableForNotification) {
-                                                conversationAESKey = YourKeyManager.getInstance().getConversationKey(conversationId); // Get the key if available
+                                                conversationAESKey = YourKeyManager.getInstance().getConversationKey(conversationId);
                                             }
 
-                                            // Attempt decryption if conditions met
                                             if (isExpectedEncryptedType && !TextUtils.isEmpty(storedContentBase64) && isSecureChatAvailableForNotification && conversationAESKey != null) {
+                                                // Attempt decryption for text/image/file if keys are available
                                                 try {
-                                                    // Use CryptoUtils.base64ToBytes to decode the Base64 string to bytes
                                                     byte[] encryptedBytesWithIV = CryptoUtils.base64ToBytes(storedContentBase64);
-
-                                                    if (encryptedBytesWithIV != null && encryptedBytesWithIV.length > 0) { // Check decoded bytes
-                                                        // Decrypt bytes using CryptoUtils.decryptMessageWithAES
+                                                    if (encryptedBytesWithIV != null && encryptedBytesWithIV.length > 0) {
                                                         String decryptedContent = CryptoUtils.decryptMessageWithAES(encryptedBytesWithIV, conversationAESKey);
-
-                                                        if ("text".equals(roomMessage.getType())) {
-                                                            notificationText = decryptedContent; // Use decrypted text
-                                                        } else if ("image".equals(roomMessage.getType())) {
-                                                            notificationText = "[Image]"; // Placeholder for images in notification
-                                                        } else {
-                                                            notificationText = "[Unknown Type - Decrypted]"; // Fallback
+                                                        // Set notification text based on decrypted content and type
+                                                        if ("text".equals(messageTypeForNotif)) {
+                                                            notificationTextToSend = decryptedContent; // Use decrypted text
+                                                        } else if ("image".equals(messageTypeForNotif)) {
+                                                            notificationTextToSend = "[Image]"; // Placeholder for images
+                                                        } else if ("file".equals(messageTypeForNotif)) {
+                                                            notificationTextToSend = "[File]"; // Placeholder for files
                                                         }
-                                                        // Log.d(TAG, "Notification text decrypted successfully for msg: " + firebaseMessageId); // Avoid logging content
-
                                                     } else {
                                                         Log.w(TAG, "Decoded encrypted bytes null/empty for notification for msg: " + firebaseMessageId);
-                                                        notificationText = "[Invalid Encrypted Data]"; // Fallback
+                                                        notificationTextToSend = "[Invalid Encrypted Data]"; // Fallback
                                                     }
-
-                                                } catch (IllegalArgumentException e) { // Base64 decoding error
-                                                    Log.e(TAG, "Base64 decoding error decrypting message for notification: " + firebaseMessageId, e);
-                                                    notificationText = "[Invalid Encrypted Data]"; // Placeholder
-                                                } catch (Exception e) { // Catch other decryption errors (BadPadding, InvalidKey etc.)
-                                                    Log.e(TAG, "Decryption failed for message for notification: " + firebaseMessageId, e);
-                                                    notificationText = "[Encrypted Message]"; // Fallback placeholder
+                                                } catch (IllegalArgumentException | BadPaddingException | IllegalBlockSizeException | InvalidKeyException | InvalidAlgorithmParameterException e) {
+                                                    Log.e(TAG, "Decryption failed for notification content for msg: " + firebaseMessageId, e);
+                                                    notificationTextToSend = "[Encrypted Message]"; // Fallback
+                                                } catch (Exception e) {
+                                                    Log.w(TAG, "Unexpected error during notification content decryption for msg: " + firebaseMessageId, e);
+                                                    notificationTextToSend = "[Encrypted Message]"; // Fallback
                                                 }
-                                            } else if ("system_key_change".equals(roomMessage.getType())) {
-                                                // Handle system message specifically - its content is plaintext
-                                                notificationText = storedContentBase64;
-                                                if(TextUtils.isEmpty(notificationText)) notificationText = "[System Message]";
-                                                Log.d(TAG, "Preparing notification for system message " + firebaseMessageId + ".");
+                                            } else if ("system_key_change".equals(messageTypeForNotif)) {
+                                                // Content for system messages is plaintext in Room
+                                                notificationTextToSend = storedContentBase64;
+                                                if(TextUtils.isEmpty(notificationTextToSend)) notificationTextToSend = "[System Message]";
+                                                Log.d(TAG, "Preparing notification content for system message " + firebaseMessageId + ".");
+                                            }
+                                            // *** ADD: Handle Drawing Link type for notification content ***
+                                            else if ("one_to_one_drawing_session_link".equals(messageTypeForNotif)) {
+                                                // The 'message' field for drawing link messages contains the text preview ("User X started...")
+                                                notificationTextToSend = storedContentBase64; // Use the stored text preview
+                                                if(TextUtils.isEmpty(notificationTextToSend)) notificationTextToSend = "[Drawing Session Link]";
+                                                Log.d(TAG, "Preparing notification content for drawing link message " + firebaseMessageId + ".");
 
                                             }
+                                            // *** END ADD ***
                                             else {
-                                                // Content is empty OR not an expected encrypted type OR keys unavailable
-                                                Log.w(TAG, "Notification decryption skipped/failed for msg " + firebaseMessageId + ". Using placeholder.");
-                                                if ("image".equals(roomMessage.getType())) {
-                                                    notificationText = "[Image]";
-                                                } else if ("file".equals(roomMessage.getType())) {
-                                                    notificationText = "[File]";
+                                                // Content is empty OR not an expected encrypted type OR keys unavailable/error
+                                                Log.w(TAG, "Notification content determination skipped/failed for msg " + firebaseMessageId + ". Using type-specific placeholder.");
+                                                if ("image".equals(messageTypeForNotif)) {
+                                                    notificationTextToSend = "[Image]";
+                                                } else if ("file".equals(messageTypeForNotif)) {
+                                                    notificationTextToSend = "[File]";
                                                 } else {
-                                                    notificationText = "[Message]"; // Generic placeholder
+                                                    notificationTextToSend = "[Message]"; // Generic placeholder for text/unknown
                                                 }
                                             }
                                             // --- End Decrypt message content ---
 
+                                            // *** Adjust notification text specifically for Invisible Ink if you want to hide the preview ***
+                                            // This check happens AFTER determining the base content
+                                            String finalNotificationContentToSend = notificationTextToSend; // Start with the determined text
+                                            if ("invisible_ink".equals(displayEffectForNotif)) {
+                                                // If it's Invisible Ink, override the content in the notification shade
+                                                // to prevent revealing it before the user taps to reveal in the app.
+                                                finalNotificationContentToSend = "You Received a secret message \uD83D\uDC7B"; // Set the requested text or "[New Invisible Message]"
+                                                Log.d(TAG, "Adjusting notification text for incoming Invisible Ink message.");
+                                            }
+                                            // *** End Adjustment ***
+
+
                                             // Send push notification using OneSignal API helper
-                                            // This runs on the ExecutorService, post to Main Thread if needed
-                                            // or use a background notification service (recommended).
-                                            // Assuming sendPushNotification is thread-safe or uses a Handler internally.
-                                            String senderNameForNotification = messageReceiverName; // The sender of the incoming message is the chat partner
+                                            // This method is assumed to be safe to call from a background thread or handles threading internally.
+                                            // *** Call sendPushNotification with all parameters ***
                                             sendPushNotification(
-                                                    messageSenderID, // Recipient is the current user
-                                                    "New Message from " + senderNameForNotification,
-                                                    notificationText // Decrypted or placeholder text
+                                                    messageSenderID, // Recipient of the notification is the current user
+                                                    "New Message from " + senderNameForNotification, // Notification Title (use chat partner's name)
+                                                    finalNotificationContentToSend, // Notification content (the adjusted text)
+                                                    messageTypeForNotif, // <<< Pass the message type
+                                                    roomMessage.getConversationId(), // <<< Pass conversationId from RoomEntity (should be THIS chat's ID)
+                                                    roomMessage.getDrawingSessionId(), // <<< Pass sessionId from RoomEntity (will be null for most types, Session ID for drawing links)
+                                                    roomMessage.getFirebaseMessageId() // <<< Pass messageId (optional, but good practice)
                                             );
-                                            // You might want to add a local flag or table to track notified messages
-                                            // to prevent sending duplicate notifications if onChildAdded is triggered
-                                            // multiple times for the same message before it's marked seen.
+                                            // *** END Call ***
+
+                                        } else {
+                                            // Message is already marked as seen in Firebase, do not send notification.
+                                            Log.d(TAG, "Incoming message " + firebaseMessageId + " is already seen in Firebase. Skipping notification.");
                                         }
+                                    } else {
+                                        // Activity is resumed (user is viewing chat). Mark visible messages as seen after adapter updates.
+                                        // No need to send notification if the user is actively in the chat.
+                                        Log.d(TAG, "Incoming message " + firebaseMessageId + " received while activity IS RESUMED. Skipping notification.");
+                                        // The markVisibleMessagesAsSeen() logic after forceRefreshDisplay will handle marking it seen.
                                     }
                                 }
                                 // --- End Notification Handling ---
 
 
+                                // --- Check if the incoming message is a system key change message (Keep existing logic) ---
+                                // Only process this if it's an incoming message from the other user AND it's a system_key_change type
+                                if ("system_key_change".equals(roomMessage.getType()) && roomMessage.getFrom().equals(messageReceiverID) && roomMessage.getTo().equals(messageSenderID)) {
+                                    Log.d(TAG, "onChildAdded (Executor): Received incoming system_key_change message. Triggering conversation key load attempt.");
+
+                                    // Trigger the conversation key load attempt if the user's private key is available.
+                                    if (YourKeyManager.getInstance().isPrivateKeyAvailable()) {
+                                        // Call the helper method to attempt loading the key for this conversation
+                                        // This method runs on the same ExecutorService.
+                                        attemptLoadConversationKeyAsync(conversationId, messageSenderID); // Pass THIS chat's conversationId and current user ID
+                                    } else {
+                                        Log.w(TAG, "onChildAdded (Executor): Received system_key_change, but user's private key is NOT available. Cannot load new key.");
+                                        // Messages will continue to show as failed until user unlocks account.
+                                    }
+                                }
+                                // --- END Check ---
+
+
                             } catch (Exception e) { // Catch any unexpected errors within this executor task
                                 Log.e(TAG, "UNEXPECTED ERROR processing message " + firebaseMessageId + " in onChildAdded executor!", e);
                                 // Log the error, but allow other messages to process
+                                // Consider adding this message to Room with a specific error status if needed
                             }
-                        });
+                        }); // End databaseWriteExecutor.execute()
                     } else {
-                        Log.w(TAG, "Received null message data or messageId from Firebase DataSnapshot in onChildAdded.");
+                        Log.w(TAG, "Received null message data or messageId from Firebase DataSnapshot in onChildAdded for conv " + conversationId);
                     }
-                }
+                } // End onChildAdded
+
 
                 @Override
                 public void onChildChanged(@NonNull DataSnapshot snapshot, @Nullable String previousChildName) {
-                    Map<String, Object> messageData = (Map<String, Object>) snapshot.getValue();
+                    // *** Your existing onChildChanged implementation with preservation logic goes here ***
+                    // Make sure it includes fetching the existing Room message to preserve 'isRevealed' and 'scheduledTime'.
+                    // Also ensure it reads the latest 'seen' status and potentially other fields that change.
+                    Map<String, Object> messageDataMap = (Map<String, Object>) snapshot.getValue();
                     String firebaseMessageId = snapshot.getKey();
 
-                    if (messageData != null && firebaseMessageId != null) {
+                    if (messageDataMap != null && firebaseMessageId != null) {
                         Log.d(TAG, "onChildChanged triggered for messageId: " + firebaseMessageId + " in conv " + conversationId);
 
-                        // Run Room DB operations on a background thread
                         databaseWriteExecutor.execute(() -> {
-                            try { // Keep this try-catch block
-
-                                // --- NEW: Check if this message is marked as deleted for me ---
-                                // If a message changes in Firebase but was deleted locally, we should not
-                                // re-insert it into the main table or update its state in the main table.
-                                // However, if it's a status change (like 'seen'), we might want to
-                                // reflect that even for a locally deleted message? Decided against for simplicity:
-                                // if deleted locally, ignore all Firebase changes.
+                            try {
+                                // --- NEW: Check if this message is marked as deleted for me (Keep existing) ---
                                 if (db == null || messageSenderID == null) {
                                     Log.e(TAG, "onChildChanged (Executor): ChatDatabase or messageSenderID instance is null. Cannot check for locally deleted messages.");
-                                    return; // Skip processing this change
+                                    return; // Skip if prerequisites missing
                                 }
-                                DeletedMessageIdDao deletedMessageIdDao = db.deletedMessageIdDao(); // Get the new DAO
+                                DeletedMessageIdDao deletedMessageIdDao = db.deletedMessageIdDao();
                                 boolean isLocallyDeleted = deletedMessageIdDao.isMessageDeletedForUser(messageSenderID, firebaseMessageId);
 
                                 if (isLocallyDeleted) {
-                                    Log.d(TAG, "onChildChanged (Executor): Message " + firebaseMessageId + " is marked as locally deleted for owner " + messageSenderID + ". Skipping update to main table.");
-                                    return; // IMPORTANT: Skip updating this message in the main table
+                                    Log.d(TAG, "onChildChanged (Executor): Message " + firebaseMessageId + " is marked as locally deleted for owner " + messageSenderID + ". Ensuring removal from Room main table.");
+                                    // If a message changes but is marked as deleted locally, ensure it's removed from Room main table.
+                                    removeMessageFromRoomById(firebaseMessageId, messageSenderID); // Call a helper method to remove from main table
+                                    return; // IMPORTANT: Skip updating if locally deleted
                                 }
                                 // --- END NEW ---
 
 
-                                // --- Existing code below this point runs ONLY IF the message is NOT locally deleted ---
-
+                                // --- Fetch EXISTING MessageEntity from Room to preserve local state ---
                                 MessageEntity existingMessage = messageDao.getMessageByFirebaseId(firebaseMessageId, messageSenderID);
+                                boolean currentIsRevealedState = false; // Default if not found
+                                String currentScheduledTime = null; // Default if not found
+                                // Preserve name, convId, sessionId from existing message if they might not be updated in Firebase
+                                String preservedName = null;
+                                String preservedConvId = null;
+                                String preservedSessionId = null;
+
 
                                 if (existingMessage != null) {
-                                    // Defensive check, should not happen if ownerUserId is correctly used in query
-                                    if (!existingMessage.getOwnerUserId().equals(messageSenderID)) {
-                                        Log.e(TAG, "onChildChanged (Executor): Owner mismatch for message " + firebaseMessageId + ". Expected: " + messageSenderID + ", Found: " + existingMessage.getOwnerUserId() + ". Skipping update.");
-                                        return; // Skip if owner is wrong
-                                    }
+                                    // Preserve the local 'isRevealed' state
+                                    currentIsRevealedState = existingMessage.isRevealed();
+                                    // Preserve the local 'scheduledTime' state (Firebase might not have this or not update it)
+                                    currentScheduledTime = existingMessage.getScheduledTime();
+                                    // Preserve name, conversationId, drawingSessionId from the existing message.
+                                    // These fields are usually only set on ADD, not necessarily updated on CHANGE.
+                                    preservedName = existingMessage.getName();
+                                    preservedConvId = existingMessage.getConversationId();
+                                    preservedSessionId = existingMessage.getDrawingSessionId();
 
-                                    // Update fields that can change in Firebase (status, seen, seenTime, timestamp, potentially message content if edited - though rare for encrypted)
-                                    String updatedContentBase64 = (String) messageData.get("message"); // Get the Base64 string from Firebase
-                                    Boolean seenStatus = (Boolean) messageData.get("seen");
-                                    String seenTimeStr = (String) messageData.get("seenTime");
-                                    String statusStr = (String) messageData.get("status");
-                                    Long timestampLong = null;
-                                    Object timestampObj = messageData.get("timestamp");
-                                    if (timestampObj instanceof Long) { timestampLong = (Long) timestampObj; }
-                                    else if (timestampObj instanceof Double) { timestampLong = ((Double) timestampObj).longValue(); }
-
-
-                                    // Always update the Base64 string from Firebase in Room to ensure it's the latest version
-                                    // Use TextUtils.equals for safety when comparing strings
-                                    if (!TextUtils.equals(updatedContentBase64, existingMessage.getMessage())) {
-                                        existingMessage.setMessage(updatedContentBase64); // Update encrypted content Base64 string
-                                        Log.d(TAG, "Updating encrypted message content Base64 string in Room for " + firebaseMessageId + " (onChildChanged)");
-                                    }
-
-
-                                    // Update seen status and time if changed
-                                    if (seenStatus != null && existingMessage.isSeen() != seenStatus) { // Check if status actually changed
-                                        existingMessage.setSeen(seenStatus);
-                                        Log.d(TAG, "Updating seen status for " + firebaseMessageId + " to " + seenStatus);
-                                        if (seenStatus && !TextUtils.isEmpty(seenTimeStr)) {
-                                            existingMessage.setSeenTime(seenTimeStr);
-                                            Log.d(TAG, "Updating seen time for " + firebaseMessageId + " to " + seenTimeStr);
-                                        } else if (!seenStatus) {
-                                            existingMessage.setSeenTime(""); // Clear seen time if marking unseen
-                                            Log.d(TAG, "Clearing seen time for " + firebaseMessageId + " as seen status is false.");
-                                        }
-                                    } else if (seenStatus != null && seenStatus && !TextUtils.isEmpty(seenTimeStr) && !TextUtils.equals(seenTimeStr, existingMessage.getSeenTime())) {
-                                        // Update seen time even if status didn't change, if time is different (e.g., timestamp correction)
-                                        existingMessage.setSeenTime(seenTimeStr);
-                                        Log.d(TAG, "Updating seen time for " + firebaseMessageId + " to " + seenTimeStr + " (status unchanged).");
-                                    }
-
-
-                                    // Update status if changed
-                                    if (!TextUtils.isEmpty(statusStr) && !statusStr.equals(existingMessage.getStatus())) {
-                                        existingMessage.setStatus(statusStr);
-                                        Log.d(TAG, "Updating status for " + firebaseMessageId + " to " + statusStr);
-                                    }
-
-                                    // Update timestamp if changed (might happen if Firebase timestamp is corrected)
-                                    if (timestampLong != null && timestampLong > 0 && existingMessage.getTimestamp() != timestampLong) {
-                                        existingMessage.setTimestamp(timestampLong);
-                                        Log.d(TAG, "Updating timestamp for " + firebaseMessageId + " to " + timestampLong);
-                                    }
-
-                                    // Save the updated message entity back to Room (REPLACE strategy)
-                                    // This will trigger LiveData update -> forceRefreshDisplay() on Main Thread
-                                    messageDao.insertMessage(existingMessage); // insert with REPLACE strategy updates if exists
-                                    Log.d(TAG, "Updated message in main Room table from Firebase change for owner " + messageSenderID + ": " + firebaseMessageId);
-
+                                    Log.d(TAG, "onChildChanged (Executor): Found existing message " + firebaseMessageId + " in Room. Preserving isRevealed=" + currentIsRevealedState + ", ScheduledTime=" + currentScheduledTime + ", Name=" + preservedName + ", ConvID=" + preservedConvId + ", SessionID=" + preservedSessionId);
                                 } else {
-                                    // Message changed but wasn't in Room for this user. Re-insert it.
-                                    Log.e(TAG, "Received onChildChanged for message " + firebaseMessageId + " NOT found in main Room table for owner " + messageSenderID + ". Re-inserting.");
-
-                                    // Re-fetch all necessary data from the snapshot
-                                    String messageContentBase64 = (String) messageData.get("message"); // This is the Base64 string
-                                    String type = (String) messageData.get("type");
-                                    String fromUserID = (String) messageData.get("from");
-                                    String toUserID = (String) messageData.get("to");
-                                    String sendTimeStrRe = (String) messageData.get("sendTime");
-                                    Boolean seenStatusRe = (Boolean) messageData.get("seen");
-                                    String seenTimeStrRe = (String) messageData.get("seenTime");
-                                    String statusStrRe = (String) messageData.get("status");
-                                    String scheduledTimeRe = (String) messageData.get("scheduledTime"); // Get scheduledTime
-                                    Long timestampLongRe = null;
-                                    Object timestampObjRe = messageData.get("timestamp");
-                                    if (timestampObjRe instanceof Long) {
-                                        timestampLongRe = (Long) timestampObjRe;
-                                    } else if (timestampObjRe instanceof Double) {
-                                        timestampLongRe = ((Double) timestampObjRe).longValue();
-                                    }
-
-
-                                    // Create and insert a new MessageEntity for this user
-                                    MessageEntity newMessage = new MessageEntity();
-                                    newMessage.setFirebaseMessageId(firebaseMessageId);
-                                    newMessage.setOwnerUserId(messageSenderID); // Owner is the current user
-                                    newMessage.setMessage(messageContentBase64); // Encrypted content Base64 string
-                                    newMessage.setType(type);
-                                    newMessage.setFrom(fromUserID);
-                                    newMessage.setTo(toUserID);
-                                    newMessage.setSendTime(sendTimeStrRe);
-                                    newMessage.setSeen(seenStatusRe != null ? seenStatusRe : false);
-                                    newMessage.setSeenTime(seenTimeStrRe);
-                                    newMessage.setStatus(!TextUtils.isEmpty(statusStrRe) ? statusStrRe : (fromUserID.equals(messageSenderID) ? "sent" : "received"));
-                                    newMessage.setScheduledTime(scheduledTimeRe); // Set scheduledTime
-                                    newMessage.setTimestamp(timestampLongRe != null && timestampLongRe > 0 ? timestampLongRe : System.currentTimeMillis()); // Use resolved timestamp or local
-
-                                    // Basic validation before inserting
-                                    if (TextUtils.isEmpty(newMessage.getType()) || TextUtils.isEmpty(newMessage.getFrom()) || TextUtils.isEmpty(newMessage.getTo())) {
-                                        Log.e(TAG, "Received changed message from Firebase with missing essential fields for messageId: " + firebaseMessageId + ". Skipping Room re-insertion.");
-                                        return; // Skip insertion if essential fields are missing
-                                    }
-
-                                    messageDao.insertMessage(newMessage); // Insert the missing message. This triggers LiveData.
-                                    Log.d(TAG, "Re-inserted message " + firebaseMessageId + " into main Room table for owner " + messageSenderID + " after onChildChanged.");
+                                    Log.w(TAG, "onChildChanged (Executor): Message " + firebaseMessageId + " NOT found in main Room table for owner " + messageSenderID + ". Cannot preserve local state. It will be inserted/updated with defaults/Firebase data.");
+                                    // In this case, the new MessageEntity will get default isRevealed=false.
                                 }
-                            } catch (Exception e) { // Catch any unexpected errors within this executor task
+                                // --- END Fetch Existing and Preserve ---
+
+
+                                // --- Create/Update MessageEntity from Firebase data ---
+                                MessageEntity updatedMessage = new MessageEntity(); // Create a new entity based on fresh data from Firebase snapshot
+
+                                // Populate fields from Firebase snapshot (Keep existing logic)
+                                updatedMessage.setFirebaseMessageId(firebaseMessageId);
+                                updatedMessage.setOwnerUserId(messageSenderID); // Owner is the current user
+                                updatedMessage.setMessage((String) messageDataMap.get("message")); // Base64 string or plaintext
+                                updatedMessage.setType((String) messageDataMap.get("type"));
+                                updatedMessage.setFrom((String) messageDataMap.get("from"));
+                                updatedMessage.setTo((String) messageDataMap.get("to"));
+                                updatedMessage.setSendTime((String) messageDataMap.get("sendTime"));
+
+                                // Get latest seen status from Firebase (This is often what changes)
+                                Object seenObj = messageDataMap.get("seen");
+                                boolean latestSeenStatus = (seenObj instanceof Boolean) ? (Boolean) seenObj : false;
+                                updatedMessage.setSeen(latestSeenStatus); // Update seen status from Firebase
+
+                                updatedMessage.setSeenTime((String) messageDataMap.get("seenTime")); // Get latest seen time from Firebase
+
+                                // Get status (string) - Status might be updated by Firebase (e.g., from "pending" to "sent" if sent from another device?)
+                                String statusStr = (String) messageDataMap.get("status");
+                                updatedMessage.setStatus(!TextUtils.isEmpty(statusStr) ? statusStr : (updatedMessage.getFrom().equals(messageSenderID) ? "sent" : "received")); // Default if missing
+
+                                updatedMessage.setScheduledTime((String) messageDataMap.get("scheduledTime")); // Get scheduledTime from Firebase (might be null)
+
+                                Long timestampLong = snapshot.hasChild("timestamp") ? snapshot.child("timestamp").getValue(Long.class) : null;
+                                updatedMessage.setTimestamp(timestampLong != null && timestampLong > 0 ? timestampLong : System.currentTimeMillis());
+
+
+                                // *** READ displayEffect from Firebase CHANGE snapshot (Keep existing) ***
+                                String firebaseDisplayEffect = (String) messageDataMap.get("displayEffect");
+                                updatedMessage.setDisplayEffect(!TextUtils.isEmpty(firebaseDisplayEffect) ? firebaseDisplayEffect : "none");
+                                // *** END READ displayEffect ***
+
+
+                                // --- ADD: Read conversationId, drawingSessionId, and name from CHANGED Firebase snapshot ---
+                                // Read these fields. If they are null in Firebase, use the preserved value from the existing message.
+                                String firebaseConversationId = (String) messageDataMap.get("conversationId");
+                                String firebaseDrawingSessionId = (String) messageDataMap.get("drawingSessionId"); // This Firebase field stores the session ID
+                                String senderDisplayNameFromFirebase = (String) messageDataMap.get("name");
+
+                                // Prefer Firebase data if available (non-empty), otherwise use the preserved local data
+                                updatedMessage.setConversationId(!TextUtils.isEmpty(firebaseConversationId) ? firebaseConversationId : preservedConvId);
+                                updatedMessage.setDrawingSessionId(!TextUtils.isEmpty(firebaseDrawingSessionId) ? firebaseDrawingSessionId : preservedSessionId);
+                                updatedMessage.setName(!TextUtils.isEmpty(senderDisplayNameFromFirebase) ? senderDisplayNameFromFirebase : preservedName);
+                                // --- END ADD ---
+
+
+                                // *** RESTORE the LOCAL isRevealed state from the previously fetched entity (Keep existing) ***
+                                // Do NOT read isRevealed from Firebase. Use the preserved state from `existingMessage`.
+                                updatedMessage.setRevealed(currentIsRevealedState);
+                                // *** RESTORE the LOCAL scheduledTime state from the previously fetched entity (Keep existing) ***
+                                // We already read scheduledTime from Firebase, but if the Firebase snapshot didn't have it,
+                                // and the local one did (e.g., set by scheduler worker), we should preserve it.
+                                // This check is slightly redundant now that we read it from Firebase *and* preserve,
+                                // but keeping the preservation logic is safe. Use the one from Firebase if available, else preserved.
+                                updatedMessage.setScheduledTime(!TextUtils.isEmpty(updatedMessage.getScheduledTime()) ? updatedMessage.getScheduledTime() : currentScheduledTime);
+
+                                // *** END RESTORE ***
+
+
+                                // Basic validation before inserting (Keep existing)
+                                if (TextUtils.isEmpty(updatedMessage.getType()) || TextUtils.isEmpty(updatedMessage.getFrom()) || TextUtils.isEmpty(updatedMessage.getTo())) {
+                                    Log.e(TAG, "Received changed message from Firebase with missing essential fields for messageId: " + firebaseMessageId + ". Skipping Room update.");
+                                    return;
+                                }
+
+                                // Save the updated message entity back to Room (REPLACE strategy)
+                                // This will trigger LiveData update -> forceRefreshDisplay() on Main Thread
+                                messageDao.insertMessage(updatedMessage); // insert with REPLACE strategy updates if exists
+                                Log.d(TAG, "Updated message in main Room table from Firebase change for owner " + messageSenderID + ": " + firebaseMessageId +
+                                        ", Type: " + updatedMessage.getType() +
+                                        ", Name: " + updatedMessage.getName() + // Log name
+                                        ", Conv ID: " + updatedMessage.getConversationId() + // Log Conv ID
+                                        ", Session ID: " + updatedMessage.getDrawingSessionId() + // Log Session ID
+                                        ", Seen: " + updatedMessage.isSeen() + // Log changed field
+                                        ", Effect: " + updatedMessage.getDisplayEffect() +
+                                        ", Revealed (Preserved): " + updatedMessage.isRevealed() +
+                                        ", ScheduledTime (Preserved): " + updatedMessage.getScheduledTime());
+
+
+                            } catch (Exception e) {
                                 Log.e(TAG, "UNEXPECTED ERROR processing message " + firebaseMessageId + " in onChildChanged executor!", e);
                                 // Log the error, but allow other messages to process
                             }
-                        });
+                        }); // End databaseWriteExecutor.execute()
                     } else {
-                        Log.w(TAG, "Received null message data or messageId from Firebase DataSnapshot in onChildChanged.");
+                        Log.w(TAG, "Received null message data or messageId from Firebase DataSnapshot in onChildChanged for conv " + conversationId);
                     }
-                }
+                } // End onChildChanged
+
 
                 @Override
                 public void onChildRemoved(@NonNull DataSnapshot snapshot) {
-                    // When a message is deleted from Firebase (e.g., "Delete for Everyone")
+                    // Keep existing logic for deletion from Room main table and locally deleted list
                     String firebaseMessageId = snapshot.getKey();
-                    if (firebaseMessageId != null && !TextUtils.isEmpty(messageSenderID) && db != null) { // Add db null check
-                        Log.d(TAG, "onChildRemoved triggered for messageId: " + firebaseMessageId + ". Deleting from Room for owner " + messageSenderID + ".");
-                        // Run Room DB operations on a background thread
+                    if (firebaseMessageId != null && !TextUtils.isEmpty(messageSenderID) && db != null) {
+                        Log.d(TAG, "onChildRemoved triggered for messageId: " + firebaseMessageId + " in conv " + conversationId + ". Deleting from Room for owner " + messageSenderID + " and removing from locally deleted list.");
                         databaseWriteExecutor.execute(() -> {
-                            try { // Keep this try-catch block
+                            try {
+                                // Delete from main messages table owned by this user
+                                removeMessageFromRoomById(firebaseMessageId, messageSenderID); // Use helper method
 
-                                // --- Existing: Delete the message from the current user's main Room database copy ---
-                                // Deleting from the main table will trigger LiveData observer -> forceRefreshDisplay()
-                                int deletedCount = messageDao.deleteMessageByFirebaseId(firebaseMessageId, messageSenderID); // Make sure this handles deleting based on firebaseMessageId and ownerUserId
-                                if (deletedCount > 0) {
-                                    Log.d(TAG, "Message removed from main Room table (onChildRemoved) for owner " + messageSenderID + ": " + firebaseMessageId);
-                                } else {
-                                    // This message might not have been in the main table for this user,
-                                    // but it might be in the locally deleted list.
-                                    Log.w(TAG, "Attempted to remove message " + firebaseMessageId + " from main table via onChildRemoved for owner " + messageSenderID + ", but it wasn't found.");
-                                }
-
-                                // --- NEW: Also remove this message ID from the locally deleted list ---
-                                DeletedMessageIdDao deletedMessageIdDao = db.deletedMessageIdDao(); // Get the new DAO
-                                int deletedFromLocalListCount = deletedMessageIdDao.deleteDeletedMessageId(messageSenderID, firebaseMessageId); // Delete from the new table
+                                // Remove this ID from the locally deleted list (since it's gone from Firebase for everyone)
+                                DeletedMessageIdDao deletedMessageIdDao = db.deletedMessageIdDao();
+                                int deletedFromLocalListCount = deletedMessageIdDao.deleteDeletedMessageId(messageSenderID, firebaseMessageId);
                                 if (deletedFromLocalListCount > 0) {
                                     Log.d(TAG, "Removed message ID " + firebaseMessageId + " from locally deleted list for owner " + messageSenderID + " via onChildRemoved.");
                                 } else {
-                                    // This is expected if the message was deleted for everyone BEFORE the user deleted it for themselves locally.
-                                    Log.d(TAG, "Message ID " + firebaseMessageId + " was not found in the locally deleted list for owner " + messageSenderID + " when onChildRemoved triggered (expected if not previously deleted for me).");
+                                    // This is expected if the message wasn't deleted locally before being deleted for everyone
+                                    Log.d(TAG, "Message ID " + firebaseMessageId + " was not found in the locally deleted list for owner " + messageSenderID + " when onChildRemoved triggered.");
                                 }
-                                // --- END NEW ---
 
-                            } catch (Exception e) { // Catch any unexpected errors within this executor task
+                            } catch (Exception e) {
                                 Log.e(TAG, "UNEXPECTED ERROR processing message " + firebaseMessageId + " in onChildRemoved executor!", e);
                                 // Log the error, but allow other messages to process
                             }
-                        });
+                        }); // End databaseWriteExecutor.execute()
                     } else {
-                        Log.w(TAG, "onChildRemoved received with null messageId, senderID, or db.");
+                        Log.w(TAG, "onChildRemoved received with null messageId, senderID, or db for conv " + conversationId);
                     }
-                }
+                } // End onChildRemoved
+
 
                 @Override
                 public void onChildMoved(@NonNull DataSnapshot snapshot, @Nullable String previousChildName) {
-                    // Messages moving within the list - typically not relevant for standard chat UIs
-                    Log.d(TAG, "onChildMoved triggered for messageId: " + snapshot.getKey());
+                    // Keep existing logic if any (usually not needed when ordering by timestamp)
+                    // Log.d(TAG, "onChildMoved triggered for messageId: " + snapshot.getKey());
                 }
 
                 @Override
                 public void onCancelled(@NonNull DatabaseError error) {
+                    // Keep existing logic for handling cancellation
                     Log.e(TAG, "Firebase Chat Listener Cancelled for conversation " + conversationId + ": " + error.getMessage(), error.toException());
+                    // Show error message to the user on the main thread
                     runOnUiThread(() -> Toast.makeText(ChatPageActivity.this, "Chat updates failed: " + error.getMessage(), Toast.LENGTH_LONG).show());
+                    // Optionally clear local Room data or show an error state for the chat if sync fails critically
                 }
-            };
+            }; // End of messageListener ChildEventListener definition
 
-            // Attach listener to the conversation-specific path in Firebase
+            // Attach the listener to the conversation-specific path in Firebase
             conversationRef.addChildEventListener(messageListener);
             Log.d(TAG, "Firebase listener attached for chat path: Messages/" + conversationId);
 
         } else {
-            Log.d(TAG, "Firebase listener already attached.");
+            Log.d(TAG, "Firebase listener already attached for conv " + conversationId + ".");
         }
     }
+    // --- *** END Modified attachMessageListener *** ---
+
+
+    // --- ADD NEW Helper Method to remove message from Room by ID ---
+    // This method is useful when told by Firebase (onChildRemoved) or when checking locally deleted.
+    // It should be called on the databaseWriteExecutor.
+    /**
+     * Deletes a message from the local Room DB by its Firebase ID for a specific owner.
+     * Should be called on a background thread (e.g., databaseWriteExecutor).
+     * @param firebaseMessageId The Firebase ID of the message.
+     * @param ownerUserId The ID of the user who owns this copy of the message in Room.
+     * @return The number of rows deleted.
+     */
+    private int removeMessageFromRoomById(String firebaseMessageId, String ownerUserId) {
+        if (TextUtils.isEmpty(firebaseMessageId) || TextUtils.isEmpty(ownerUserId) || messageDao == null) {
+            Log.e(TAG, "Cannot remove message from Room by ID: Missing IDs or DAO.");
+            return 0;
+        }
+        try {
+            int deletedRows = messageDao.deleteMessageByFirebaseId(firebaseMessageId, ownerUserId); // Use your DAO method
+            if (deletedRows > 0) {
+                Log.d(TAG, "Message removed from Room DB for ID: " + firebaseMessageId + " (Owner: " + ownerUserId + "). Rows deleted: " + deletedRows);
+                // LiveData observer will pick this Room change up and update UI automatically
+            } else {
+                // This is expected if the message didn't exist in Room for some reason (e.g., hasn't synced yet or already gone)
+                Log.d(TAG, "Attempted to remove message " + firebaseMessageId + " from Room DB for owner " + ownerUserId + ", but it was not found. Rows deleted: " + deletedRows);
+            }
+            return deletedRows;
+        } catch (Exception e) {
+            Log.e(TAG, "Error removing message " + firebaseMessageId + " from Room DB for owner " + ownerUserId, e);
+            // Handle Room DB errors (log, retry?)
+            return 0;
+        }
+    }
+    // --- END NEW Helper Method ---
+
+
+// ... rest of ChatPageActivity methods ...
     // --- *** END Modify attachMessageListener *** ---
 
 
 
-
-    // Add this NEW method inside ChatPageActivity.java, outside of other methods
 
     /**
      * Attempts to load the conversation AES key for a specific conversation from Room DB,
@@ -2083,35 +2406,42 @@ public class ChatPageActivity extends AppCompatActivity implements
     protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
 
-        if (requestCode == PICK_IMAGE_REQUEST && resultCode == RESULT_OK && data != null && data.getData() != null) {
-            imageUri = data.getData();
-            try {
-                InputStream inputStream = getContentResolver().openInputStream(imageUri);
-                Bitmap bitmap = null;
-                if (inputStream != null) {
-                    bitmap = BitmapFactory.decodeStream(inputStream);
-                    inputStream.close();
-                }
+        // *** DELETE THIS ENTIRE BLOCK ***
+        // This old image picking logic is replaced by ActivityResultLaunchers.
+        // if (requestCode == PICK_IMAGE_REQUEST && resultCode == RESULT_OK && data != null && data.getData() != null) {
+        //     imageUri = data.getData();
+        //     try {
+        //         InputStream inputStream = getContentResolver().openInputStream(imageUri);
+        //         Bitmap bitmap = null;
+        //         if (inputStream != null) {
+        //             bitmap = BitmapFactory.decodeStream(inputStream);
+        //             inputStream.close();
+        //         }
+        //
+        //         if (bitmap != null) {
+        //             String base64Image = convertBitmapToBase64(bitmap); // Get Base64 string of the image
+        //             bitmap.recycle();
+        //             // This call caused the error because sendImageMessage now needs 2 arguments:
+        //             // sendImageMessage(base64Image); // PROBLEM LINE
+        //         } else {
+        //             Log.e(TAG, "Failed to decode bitmap from URI");
+        //             Toast.makeText(this, "Error loading image!", Toast.LENGTH_SHORT).show();
+        //         }
+        //     } catch (IOException e) {
+        //         Log.e(TAG, "IOException loading image from URI", e);
+        //         Toast.makeText(this, "Error loading image!", Toast.LENGTH_SHORT).show();
+        //     } catch (Exception e) {
+        //         Log.e(TAG, "General error loading image from URI", e);
+        //         Toast.makeText(this, "Error loading image!", Toast.LENGTH_SHORT).show();
+        //     }
+        // }
+        // *** END OF BLOCK TO DELETE ***
 
-                if (bitmap != null) {
-                    String base64Image = convertBitmapToBase64(bitmap); // Get Base64 string of the image
-                    bitmap.recycle();
-                    sendImageMessage(base64Image); // Pass the Base64 string to sendImageMessage
-                } else {
-                    Log.e(TAG, "Failed to decode bitmap from URI");
-                    Toast.makeText(this, "Error loading image!", Toast.LENGTH_SHORT).show();
-                }
-            } catch (IOException e) {
-                Log.e(TAG, "IOException loading image from URI", e);
-                Toast.makeText(this, "Error loading image!", Toast.LENGTH_SHORT).show();
-            } catch (Exception e) {
-                Log.e(TAG, "General error loading image from URI", e);
-                Toast.makeText(this, "Error loading image!", Toast.LENGTH_SHORT).show();
-            }
-        }
+
+        // Keep the rest of the onActivityResult method (wallpaper handling)
 
         // Handle Wallpaper Image Selection/Capture (Keep as is)
-        else if (requestCode == REQUEST_CODE_PICK_IMAGE_WALLPAPER && resultCode == RESULT_OK && data != null && data.getData() != null) {
+          if (requestCode == REQUEST_CODE_PICK_IMAGE_WALLPAPER && resultCode == RESULT_OK && data != null && data.getData() != null) {
             Uri selectedImageUri = data.getData();
             Log.d(TAG, "Gallery image selected for wallpaper: " + selectedImageUri);
             processSelectedWallpaper(selectedImageUri);
@@ -2125,16 +2455,19 @@ public class ChatPageActivity extends AppCompatActivity implements
             }
         } else if (resultCode == RESULT_CANCELED) {
             Log.d(TAG, "Image picker or camera activity cancelled.");
+            // Clean up temporary camera file for wallpaper on cancel
             if (requestCode == REQUEST_CODE_TAKE_PHOTO_WALLPAPER && cameraPhotoUri != null) {
                 try {
                     getContentResolver().delete(cameraPhotoUri, null, null);
-                    Log.d(TAG, "Cleaned up temp camera file on cancel.");
-                } catch (Exception e) {
-                    Log.w(TAG, "Failed to clean up temp camera file on cancel", e);
-                } finally {
-                    cameraPhotoUri = null;
-                }
+                    Log.d(TAG, "Cleaned up temp wallpaper camera file on cancel.");
+                } catch (Exception e) { Log.w(TAG, "Failed to clean up temp wallpaper camera file on cancel", e); } finally { cameraPhotoUri = null; }
             }
+            // Also check and clean up temp message camera URI if cancellation was for message camera
+            // This might be handled by the launcher callback's error path, but a fallback here is okay.
+            // Check if this was the message camera request (might need a specific request code if launchers aren't enough)
+            // For launchers, the cancellation is handled by the launcher's callback receiving 'isSuccess = false'.
+            // The cleanup logic for imageToSendUri should be in the takePictureLauncher callback's else block.
+            // So, this else-if block for RESULT_CANCELED should primarily focus on wallpaper cleanup.
         }
     }
 
@@ -2427,41 +2760,115 @@ public class ChatPageActivity extends AppCompatActivity implements
 
 
     // --- Add a helper method to send the actual push notification --- (Keep as is)
-    private void sendPushNotification(String recipientFirebaseUID, String title, String messageContent) { /* ... (existing method) ... */
-        if (oneSignalApiService == null || TextUtils.isEmpty(recipientFirebaseUID)) { Log.e(TAG, "sendPushNotification: API service not initialized or recipient UID is empty."); return; }
+    // Inside ChatPageActivity.java class body { ... }
+
+    /**
+     * Helper method to send a push notification via OneSignal API.
+     * Runs on the main thread, Retrofit handles background network call.
+     */
+    // --- MODIFIED SIGNATURE: Add parameters for type, convId, sessionId, messageId ---
+    private void sendPushNotification(String recipientFirebaseUID, String title, String messageContent,
+                                      @Nullable String messageType, // <<< NEW Parameter
+                                      @Nullable String conversationId, // <<< NEW Parameter
+                                      @Nullable String sessionId, // <<< NEW Parameter
+                                      @Nullable String messageId) { // <<< NEW Parameter (e.g., Firebase Message ID)
+        if (oneSignalApiService == null || TextUtils.isEmpty(recipientFirebaseUID)) {
+            Log.e(TAG, "sendPushNotification: API service not initialized or recipient UID is empty.");
+            return;
+        }
         Log.d(TAG, "Preparing to send push notification to recipient UID (External ID): " + recipientFirebaseUID);
+
         JsonObject notificationBody = new JsonObject();
-        notificationBody.addProperty("app_id", ONESIGNAL_APP_ID);
+
+        notificationBody.addProperty("app_id", ONESIGNAL_APP_ID); // Your OneSignal App ID
+
         JsonArray externalUserIds = new JsonArray();
         externalUserIds.add(recipientFirebaseUID);
-        notificationBody.add("include_external_user_ids", externalUserIds);
+        notificationBody.add("include_external_user_ids", externalUserIds); // Target recipients by Firebase UID
+
+        // Add notification title and content
         notificationBody.add("headings", new Gson().toJsonTree(Collections.singletonMap("en", title)));
         notificationBody.add("contents", new Gson().toJsonTree(Collections.singletonMap("en", messageContent)));
+
+
+        // --- MODIFIED: Add custom data payload ---
         JsonObject data = new JsonObject();
+        // Add sender and receiver IDs (useful for identifying chat)
         data.addProperty("senderId", messageSenderID);
-        data.addProperty("recipientId", messageReceiverID);
-        data.addProperty("conversationId", conversationId);
-        notificationBody.add("data", data);
-        notificationBody.addProperty("small_icon", "app_icon_circleup");
-        Log.d(TAG, "Making API call to OneSignal...");
+        data.addProperty("recipientId", messageReceiverID); // In 1:1, this is the chat partner ID
+
+        // Add message type, conversation ID, session ID, and message ID if provided
+        if (!TextUtils.isEmpty(messageType)) {
+            data.addProperty("messageType", messageType); // Include message type (e.g., "text", "image", "one_to_one_drawing_session_link")
+            // Set a specific event type based on message type for easier handling in recipient app
+            if ("one_to_one_drawing_session_link".equals(messageType)) {
+                data.addProperty("eventType", "drawing_link"); // Specific event type for drawing links
+            } else if ("system_key_change".equals(messageType)) {
+                data.addProperty("eventType", "system_message"); // Specific event type for system messages
+            }
+            else {
+                data.addProperty("eventType", "message"); // Default generic event type for text/image/file etc.
+            }
+        } else {
+            // Default event type if message type is missing (should not happen if parameters are passed correctly)
+            data.addProperty("eventType", "message");
+        }
+
+
+        if (!TextUtils.isEmpty(conversationId)) {
+            data.addProperty("conversationId", conversationId); // Include conversation ID
+        }
+        if (!TextUtils.isEmpty(sessionId)) {
+            // Use a generic key like "sessionId" in the data payload for drawing links
+            data.addProperty("sessionId", sessionId); // Include session ID
+        }
+        if (!TextUtils.isEmpty(messageId)) {
+            data.addProperty("messageId", messageId); // Include Firebase message ID (optional, but useful for deep linking)
+        }
+        // --- END MODIFIED ADD DATA ---
+
+
+        notificationBody.add("data", data); // Add the custom data payload
+
+        // Optional: Set small icon (recommended)
+        notificationBody.addProperty("small_icon", "app_icon_circleup"); // <<< Replace with your icon's resource name (string)
+
+
+        // Optional: Customize notification appearance (sound, vibration, etc.)
+
+
+        // Make the API call asynchronously using Retrofit
+        Log.d(TAG, "Making OneSignal API call...");
         oneSignalApiService.sendNotification(notificationBody).enqueue(new Callback<ResponseBody>() {
-            @Override public void onResponse(@NonNull Call<ResponseBody> call, @NonNull Response<ResponseBody> response) { /* ... log success/error ... */
+            @Override
+            public void onResponse(@NonNull Call<ResponseBody> call, @NonNull Response<ResponseBody> response) {
                 if (response.isSuccessful()) {
                     Log.d(TAG, "OneSignal API call successful. Response Code: " + response.code());
-                    try (ResponseBody responseBody = response.body()) { String resBody = responseBody != null ? responseBody.string() : "N/A"; Log.d(TAG, "OneSignal API Response Body: " + resBody); }
-                    catch (IOException e) { Log.e(TAG, "Failed to read OneSignal response body", e); }
+                    try (ResponseBody responseBody = response.body()) {
+                        String resBody = responseBody != null ? responseBody.string() : "N/A";
+                        Log.d(TAG, "OneSignal API Response Body: " + resBody);
+                        // Look for "id" and "recipients" in the response body JSON for confirmation
+                    } catch (IOException e) { Log.e(TAG, "Failed to read success response body", e); }
                 } else {
                     Log.e(TAG, "OneSignal API call failed. Response Code: " + response.code());
-                    try (ResponseBody errorBody = response.errorBody()) { String errBody = errorBody != null ? errorBody.string() : "N/A"; Log.e(TAG, "OneSignal API Error Body: " + errBody); }
-                    catch (IOException e) { Log.e(TAG, "Failed to read OneSignal error body", e); }
+                    try (ResponseBody errorBody = response.errorBody()) {
+                        String errBody = errorBody != null ? errorBody.string() : "N/A"; // Corrected to errorBody().string()
+                        Log.e(TAG, "OneSignal API Error Body: " + errBody);
+                        // Common errors: 400 (Invalid JSON), 403 (Invalid REST API Key), 404 (App ID not found), Invalid External IDs
+                    } catch (IOException e) { Log.e(TAG, "Failed to read error response body", e); }
                     Log.w(TAG, "Failed to send push notification via OneSignal API.");
                 }
             }
-            @Override public void onFailure(@NonNull Call<ResponseBody> call, @NonNull Throwable t) { Log.e(TAG, "OneSignal API call failed (network error)", t); Log.w(TAG, "Failed to send push notification due to network error."); }
+
+            @Override
+            public void onFailure(@NonNull Call<ResponseBody> call, @NonNull Throwable t) {
+                Log.e(TAG, "OneSignal API call failed (network error)", t);
+                Log.w(TAG, "Failed to send push notification due to network error.");
+            }
         });
         Log.d(TAG, "OneSignal API call enqueued.");
     }
-
+    // --- END MODIFIED HELPER METHOD ---
 
     // --- NEW Method to show wallpaper options dialog --- (Keep as is)
     private void showChangeWallpaperDialog() { /* ... (existing method) ... */
@@ -2628,37 +3035,51 @@ public class ChatPageActivity extends AppCompatActivity implements
      * Assumes the LiveData's last value is still available in the `chatMessagesLiveData` object.
      * This method should be called on the Main Thread.
      */
+// Inside ChatPageActivity.java
+
+// ... (Keep your existing imports at the top) ...
+
+    /**
+     * Forces the message list to re-process its current data from the LiveData's last value.
+     * Useful when decryption keys become available after the data was initially loaded,
+     * or data changes in Room (status, seen, or isRevealed for Invisible Ink).
+     * Assumes the LiveData's last value is still available in the `chatMessagesLiveData` object.
+     * This method should be called on the Main Thread because it updates UI via the adapter.
+     */
     public void forceRefreshDisplay() {
         Log.d(TAG, "🟢 forceRefreshDisplay() called for conversation " + conversationId);
 
         // Ensure LiveData has a value and adapter exists
         if (chatMessagesLiveData == null || chatMessagesLiveData.getValue() == null || messageAdapter == null || messagesList == null || messagesList.getLayoutManager() == null) {
             Log.w(TAG, "forceRefreshDisplay skipped: LiveData, value, adapter, messagesList, or LayoutManager is null.");
+
             // Clear adapter list defensively even if components are null/empty
             if (messageAdapter != null) {
-                // Clear the messagesArrayList (the adapter's data source)
-                messagesArrayList.clear();
-                // Notify the adapter that the dataset has changed (now empty)
-                messageAdapter.notifyDataSetChanged();
+                messagesArrayList.clear(); // Clear the adapter's data source
+                messageAdapter.notifyDataSetChanged(); // Notify the adapter that the dataset has changed (now empty)
             }
 
             // Still disable UI if keys are unavailable, even if no messages displayed
+            // This check also ensures UI is enabled if keys ARE available but something else was null above
             boolean isSecureChatCurrentlyAvailable = YourKeyManager.getInstance().isPrivateKeyAvailable() && YourKeyManager.getInstance().hasConversationKey(conversationId);
             if (!isSecureChatCurrentlyAvailable) {
                 if (messageInputText != null) { messageInputText.setEnabled(false); messageInputText.setHint("Secure chat unavailable"); }
                 if (sendMessageButton != null) sendMessageButton.setEnabled(false);
-                if (send_imgmsg_btn != null) send_imgmsg_btn.setEnabled(false);
+                if (attachmentButton != null) attachmentButton.setEnabled(false); // Include attachment button
+                Log.d(TAG, "forceRefreshDisplay disabled UI due to keys unavailable.");
             } else {
-                // If keys ARE available but we skipped due to other nulls, ensure UI is enabled
-                if (messageInputText != null) { messageInputText.setEnabled(true); messageInputText.setHint("Enter Message..."); }
+                if (messageInputText != null) { messageInputText.setEnabled(true); messageInputText.setHint("Type The Messages..."); }
                 if (sendMessageButton != null) sendMessageButton.setEnabled(true);
-                if (send_imgmsg_btn != null) send_imgmsg_btn.setEnabled(true);
+                if (attachmentButton != null) attachmentButton.setEnabled(true); // Include attachment button
+                Log.d(TAG, "forceRefreshDisplay ensured UI is enabled as keys are available.");
             }
 
-            Log.d(TAG, "✅ forceRefreshDisplay finished (skipped due to nulls).");
+
+            Log.d(TAG, "✅ forceRefreshDisplay finished (skipped due to initial nulls).");
             return;
         }
 
+        // Get the latest list of messages from the LiveData
         List<MessageEntity> currentMessages = chatMessagesLiveData.getValue();
 
         Log.d(TAG, "forceRefreshDisplay triggered. Re-processing " + (currentMessages != null ? currentMessages.size() : 0) + " MessageEntity objects from Room for owner " + messageSenderID);
@@ -2668,11 +3089,11 @@ public class ChatPageActivity extends AppCompatActivity implements
         // Check if the user's main private key is available (required to decrypt conversation keys, indicates account is unlocked)
         boolean isPrivateKeyAvailable = YourKeyManager.getInstance().isPrivateKeyAvailable();
         // Check if the single conversation key is available
-        boolean isConversationKeyAvailable = (conversationAESKey != null); // *** MODIFIED CHECK ***
+        boolean isConversationKeyAvailable = (conversationAESKey != null);
 
-        Log.d(TAG, "KeyManager State: PrivateKey Available = " + isPrivateKeyAvailable + ", Conversation Key Available = " + isConversationKeyAvailable); // *** MODIFIED LOG ***
+        Log.d(TAG, "KeyManager State for Display: PrivateKey Available = " + isPrivateKeyAvailable + ", Conversation Key Available = " + isConversationKeyAvailable);
 
-        // Clear the list that feeds the adapter for a fresh populate
+        // Clear the list that feeds the adapter for a fresh populate based on current state
         messagesArrayList.clear();
 
         if (currentMessages != null && !currentMessages.isEmpty()) {
@@ -2685,58 +3106,79 @@ public class ChatPageActivity extends AppCompatActivity implements
                     continue; // Skip this iteration
                 }
 
-                String storedMessageContentBase64 = storedMessageEntity.getMessage(); // This is the Base64 string from Room (could be encrypted or plaintext)
+                String storedMessageContentBase64 = storedMessageEntity.getMessage(); // This is the Base64 string from Room (could be encrypted or plaintext/raw)
                 String messageType = storedMessageEntity.getType();
+                String fromUserId = storedMessageEntity.getFrom();
+                String toUserId = storedMessageEntity.getTo();
                 String firebaseMessageId = storedMessageEntity.getFirebaseMessageId();
-                long messageTimestamp = storedMessageEntity.getTimestamp();
+                String displayEffect = storedMessageEntity.getDisplayEffect(); // *** Get NEW field ***
+                boolean isRevealed = storedMessageEntity.isRevealed(); // *** Get NEW field ***
                 String scheduledTime = storedMessageEntity.getScheduledTime(); // Get the scheduled time
 
-                String displayedContent = ""; // This will hold the final content to display
+
+                String storedConversationId = storedMessageEntity.getConversationId(); // Get conversation ID from Room
+                String storedDrawingSessionId = storedMessageEntity.getDrawingSessionId(); // Get session ID from Room
+                String storedSenderName = storedMessageEntity.getName(); // Get sender name from Room
+
+
+                String processedContentForAdapter = ""; // This will hold the final content to display in the adapter
                 String processingOutcome = "Default"; // Track how the content was determined
 
 
-                // --- Determine the expected state and type placeholder ---
-                boolean isExpectedEncryptedType = "text".equals(messageType) || "image".equals(messageType);
-                boolean isPlaintextScheduled = isExpectedEncryptedType && !TextUtils.isEmpty(scheduledTime); // It's text/image AND has scheduledTime
-                boolean isAlwaysPlaintextType = "file".equals(messageType) || "system_key_change".equals(messageType); // These types are never encrypted by our app
 
-                // --- Handle Empty Content ---
+                // --- ADD THIS BLOCK: Handle Drawing Link Type First ---
+                if ("one_to_one_drawing_session_link".equals(messageType)) {
+                    // For drawing link, the stored content is the preview text. Just use it directly.
+                    processedContentForAdapter = storedMessageContentBase64;
+                    processingOutcome = "Drawing Link";
+                    // No decryption needed for this type
+                    Log.d(TAG, "Msg " + storedMessageEntity.getFirebaseMessageId() + ": Handling as Drawing Link message type. Outcome: " + processingOutcome);
+                }
+                // --- Determine the expected state and type ---
+                boolean isIncoming = toUserId != null && toUserId.equals(messageSenderID); // Is message for the current user?
+                boolean isOutgoing = fromUserId != null && fromUserId.equals(messageSenderID); // Is message sent by the current user?
+                boolean isExpectedEncryptedType = "text".equals(messageType) || "image".equals(messageType) || "file".equals(messageType); // Types that *should* be encrypted
+                boolean isPlaintextScheduled = isExpectedEncryptedType && !TextUtils.isEmpty(scheduledTime); // Is it text/image/file sent via scheduler? (assumed plaintext/raw in Room)
+                boolean isAlwaysPlaintextType = "system_key_change".equals(messageType); // Types never encrypted by our app
+
+
+                // --- Step 1: Determine Base Content (Decrypted, Raw, or Placeholder due to Crypto State) ---
                 if (TextUtils.isEmpty(storedMessageContentBase64)) {
                     // Content is empty in Room - show a type-specific placeholder
-                    if ("image".equals(messageType)) displayedContent = "[Image Data Missing]";
-                    else if ("file".equals(messageType)) displayedContent = "[File Data Missing]";
-                    else if ("system_key_change".equals(messageType)) displayedContent = "[System Message Data Missing]";
-                    else displayedContent = "[Empty Message]"; // Default for text or unknown type
+                    if ("image".equals(messageType)) processedContentForAdapter = "[Image Data Missing]";
+                    else if ("file".equals(messageType)) processedContentForAdapter = "[File Data Missing]";
+                    else if ("system_key_change".equals(messageType)) processedContentForAdapter = "[System Message Data Missing]";
+                    else processedContentForAdapter = "[Empty Message]"; // Default for text or unknown type
                     processingOutcome = "Content Empty";
                     Log.w(TAG, "Msg " + firebaseMessageId + " (Type: " + messageType + "): Stored content empty. Outcome: " + processingOutcome);
 
                 }
-                // --- Handle Plaintext Scheduled Messages (Text or Image) ---
+                // --- Handle Plaintext Scheduled Messages (Text, Image, File) or Always Plaintext Types ---
                 else if (isPlaintextScheduled || isAlwaysPlaintextType) {
-                    // This message is either a text/image from the scheduled worker (has scheduledTime)
-                    // OR it is a type that is never encrypted (file, system_key_change).
-                    // In both cases, the stored content is the plaintext/raw data.
-                    displayedContent = storedMessageContentBase64; // Display the stored content directly
-                    if (TextUtils.isEmpty(displayedContent)) {
-                        // Fallback to placeholder if the *intended* plaintext content is empty
-                        if ("image".equals(messageType)) displayedContent = "[Image Data Missing]";
-                        else if ("file".equals(messageType)) displayedContent = "[File Data Missing]";
-                        else if ("system_key_change".equals(messageType)) displayedContent = "[System Message Data Missing]";
-                        else displayedContent = "[Empty Message]";
+                    // This message is either a text/image/file from the scheduled worker (has scheduledTime)
+                    // OR it is a type that is never encrypted (system_key_change).
+                    // In both cases, the stored content is the plaintext/raw data (Base64 for image/file, text for system/scheduled text).
+                    processedContentForAdapter = storedMessageContentBase64; // Use the stored content directly
+                    if (TextUtils.isEmpty(processedContentForAdapter)) {
+                        // Fallback to a placeholder if the *intended* plaintext content is empty
+                        if ("image".equals(messageType)) processedContentForAdapter = "[Image Data Missing]";
+                        else if ("file".equals(messageType)) processedContentForAdapter = "[File Data Missing]";
+                        else if ("system_key_change".equals(messageType)) processedContentForAdapter = "[System Message Data Missing]";
+                        else processedContentForAdapter = "[Empty Message]";
                         processingOutcome = "Plaintext/Always Plaintext Type (Content Empty Fallback)";
                     } else {
                         processingOutcome = isPlaintextScheduled ? "Plaintext Scheduled" : "Always Plaintext Type";
                     }
-                    Log.d(TAG, "Msg " + firebaseMessageId + " (Type: " + messageType + ", Scheduled: " + scheduledTime + "): Displaying as plaintext/raw. Outcome: " + processingOutcome);
+                    Log.d(TAG, "Msg " + firebaseMessageId + " (Type: " + messageType + ", Scheduled: " + scheduledTime + ", Effect: " + displayEffect + "): Displaying as plaintext/raw. Outcome: " + processingOutcome);
                 }
-                // --- Handle Potentially Encrypted Text/Image Messages (Not Scheduled) ---
-                else if (isExpectedEncryptedType) { // This condition implies it's text/image, has content, and is NOT scheduled
+                // --- Handle Potentially Encrypted Text/Image/File Messages (Not Scheduled) ---
+                else if (isExpectedEncryptedType) { // This condition implies it's text/image/file, has content, and is NOT scheduled
 
                     // Check if keys are available to decrypt
                     if (isPrivateKeyAvailable && isConversationKeyAvailable) {
                         // Keys available, attempt decryption
                         processingOutcome = "Attempting Decryption";
-                        Log.d(TAG, "Msg " + firebaseMessageId + " (Type: " + messageType + "): Not scheduled. Keys available. Attempting decryption.");
+                        Log.d(TAG, "Msg " + firebaseMessageId + " (Type: " + messageType + ", Effect: " + displayEffect + "): Not scheduled. Keys available. Attempting decryption.");
 
                         byte[] encryptedBytesWithIV = null;
                         try {
@@ -2746,54 +3188,78 @@ public class ChatPageActivity extends AppCompatActivity implements
                             if (encryptedBytesWithIV == null || encryptedBytesWithIV.length == 0) {
                                 Log.w(TAG, "Msg " + firebaseMessageId + ": Decoded encrypted bytes null/empty after Base64 decode.");
                                 processingOutcome = "Decoded Empty Bytes";
-                                displayedContent = "text".equals(messageType) ? "[Invalid Encrypted Data]" : "[Invalid Encrypted Image Data]";
+                                if ("image".equals(messageType)) processedContentForAdapter = "[Invalid Encrypted Image Data]";
+                                else if ("file".equals(messageType)) processedContentForAdapter = "[Invalid Encrypted File Data]";
+                                else processedContentForAdapter = "[Invalid Encrypted Data]"; // Default for text
                             } else {
                                 // Decrypt using the single conversation key
                                 try {
                                     String decryptedContent = CryptoUtils.decryptMessageWithAES(encryptedBytesWithIV, conversationAESKey);
-                                    displayedContent = decryptedContent; // Use decrypted content
+                                    processedContentForAdapter = decryptedContent; // Use decrypted content
                                     processingOutcome = "Decryption Success";
                                     Log.d(TAG, "Msg " + firebaseMessageId + ": Decrypted SUCCESSFULLY.");
                                 } catch (BadPaddingException | IllegalBlockSizeException | InvalidKeyException | InvalidAlgorithmParameterException e) {
                                     // Crypto decryption failed for THIS key!
                                     Log.d(TAG, "Msg " + firebaseMessageId + ": Decryption FAILED. " + e.getClass().getSimpleName());
                                     processingOutcome = "Decryption Failed: " + e.getClass().getSimpleName();
-                                    displayedContent = "text".equals(messageType) ? "[Encrypted Message - Failed]" : "[Encrypted Image - Failed]"; // Type-specific failure placeholder
+                                    if ("image".equals(messageType)) processedContentForAdapter = "[Encrypted Image - Failed]";
+                                    else if ("file".equals(messageType)) processedContentForAdapter = "[Encrypted File - Failed]";
+                                    else processedContentForAdapter = "[Encrypted Message - Failed]"; // Default for text
                                 } catch (Exception e) {
                                     Log.w(TAG, "Msg " + firebaseMessageId + ": Unexpected error during decryption.", e);
                                     processingOutcome = "Decryption Failed: Unexpected Error";
-                                    displayedContent = "text".equals(messageType) ? "[Encrypted Message - Failed]" : "[Encrypted Image - Failed]"; // Type-specific failure placeholder
+                                    if ("image".equals(messageType)) processedContentForAdapter = "[Encrypted Image - Failed]";
+                                    else if ("file".equals(messageType)) processedContentForAdapter = "[Encrypted File - Failed]";
+                                    else processedContentForAdapter = "[Encrypted Message - Failed]"; // Default for text
                                 }
                             }
 
-                        } catch (IllegalArgumentException e) { // Base64 decoding error
+                        } catch (IllegalArgumentException e) { // Base64 decoding error for the *encrypted* data
                             Log.e(TAG, "Msg " + firebaseMessageId + ": Base64 decoding error for encrypted content.", e);
                             processingOutcome = "Base64 Decoding Error";
-                            displayedContent = "[Invalid Encrypted Data]"; // Placeholder on Base64 error
+                            processedContentForAdapter = "[Invalid Encrypted Data]"; // Placeholder on Base64 error
                         } catch (Exception e) { // Any other unexpected decoding error
                             Log.e(TAG, "Msg " + firebaseMessageId + ": Unexpected error decoding Base64 for display.", e);
                             processingOutcome = "Decoding Error";
-                            displayedContent = "[Invalid Encrypted Data]"; // Placeholder
+                            processedContentForAdapter = "[Invalid Encrypted Data]"; // Placeholder
                         }
 
                     } else {
                         // Keys are missing, cannot decrypt
                         processingOutcome = "Keys Unavailable";
-                        Log.d(TAG, "Msg " + firebaseMessageId + " (Type: " + messageType + "): Not scheduled, but keys are unavailable (PrivKey: " + isPrivateKeyAvailable + ", ConvKey: " + isConversationKeyAvailable + "). Showing [Locked].");
-                        displayedContent = "[Locked]"; // Placeholder indicating account needs unlocking or keys need loading
+                        Log.d(TAG, "Msg " + firebaseMessageId + " (Type: " + messageType + ", Effect: " + displayEffect + "): Not scheduled. Keys unavailable (PrivKey: " + isPrivateKeyAvailable + ", ConvKey: " + isConversationKeyAvailable + "). Showing [Locked].");
+                        if ("image".equals(messageType)) processedContentForAdapter = "[Locked Image]";
+                        else if ("file".equals(messageType)) processedContentForAdapter = "[Locked File]";
+                        else processedContentForAdapter = "[Locked]"; // Placeholder indicating account needs unlocking or keys need loading
                     }
 
                 }
-                // --- Step 6: Fallback for unexpected cases ---
+                // --- Step 2: Fallback for unexpected cases ---
                 else {
                     // Should theoretically not be reached if all types and conditions are covered.
                     // This might catch unexpected types or states. Display stored content as is.
                     Log.w(TAG, "Msg " + firebaseMessageId + " (Type: " + messageType + ", Scheduled: " + scheduledTime + ", Content Empty: " + TextUtils.isEmpty(storedMessageContentBase64) + ", Keys Available: " + (isPrivateKeyAvailable && isConversationKeyAvailable) + "): Reached unexpected state. Displaying stored content as is.");
-                    displayedContent = storedMessageContentBase64;
+                    processedContentForAdapter = storedMessageContentBase64;
                     processingOutcome = "Fallback State";
-                    // Ensure displayedContent is not null/empty for safety, use generic placeholder if needed
-                    if (TextUtils.isEmpty(displayedContent)) displayedContent = "[Unknown Message Type/State]";
+                    // Ensure processedContentForAdapter is not null/empty for safety, use generic placeholder if needed
+                    if (TextUtils.isEmpty(processedContentForAdapter)) processedContentForAdapter = "[Unknown Message Type/State]";
                 }
+
+
+                // --- *** Step 2: Apply Invisible Ink Logic (ONLY FOR INCOMING TEXT MESSAGES) *** ---
+                // After determining the base content (decrypted, raw, or error placeholder),
+                // check if it needs to be HIDDEN due to Invisible Ink status.
+                if (isIncoming && "text".equals(messageType) && "invisible_ink".equals(displayEffect) && !isRevealed) {
+                    // This is an incoming, unrevealed Invisible Ink text message.
+                    // We will OVERRIDE the content determined above and use a special marker
+                    // to tell the adapter to show the "[Tap to Reveal]" placeholder instead.
+                    processedContentForAdapter = "[INVISIBLE_INK_HIDDEN]"; // Use a unique marker string
+                    processingOutcome += " -> Hidden (Invisible Ink)";
+                    Log.d(TAG, "Msg " + firebaseMessageId + ": Applying Invisible Ink hiding effect.");
+                }
+                // For all other messages (outgoing, image, file, system, or already revealed Invisible Ink text),
+                // we keep the processedContentForAdapter determined in Step 1.
+                // --- *** END Invisible Ink Logic *** ---
 
 
                 // Create a *new* MessageEntity object with the processed content for the adapter
@@ -2810,23 +3276,37 @@ public class ChatPageActivity extends AppCompatActivity implements
                 displayedMessageEntity.setStatus(storedMessageEntity.getStatus());
                 displayedMessageEntity.setTimestamp(storedMessageEntity.getTimestamp());
                 displayedMessageEntity.setScheduledTime(storedMessageEntity.getScheduledTime()); // *** Copy the scheduled time field! ***
-                // *** Set the processed content to display ***
-                displayedMessageEntity.setMessage(displayedContent);
+                displayedMessageEntity.setDisplayEffect(storedMessageEntity.getDisplayEffect()); // *** Copy the original display effect! ***
+                displayedMessageEntity.setRevealed(storedMessageEntity.isRevealed()); // *** Copy the original revealed state! ***
+                displayedMessageEntity.setConversationId(storedConversationId);
+                displayedMessageEntity.setDrawingSessionId(storedDrawingSessionId);
+                displayedMessageEntity.setName(storedSenderName); // Copy the sender's display name
+                // *** Set the processed content to display in the adapter ***
+                // This will be the decrypted text, Base64 image, original plaintext,
+                // a placeholder for crypto errors/locked state, or the special
+                // "[INVISIBLE_INK_HIDDEN]" marker for unrevealed Invisible Ink text.
+                displayedMessageEntity.setMessage(processedContentForAdapter);
+
 
                 // Log the final content being added to the adapter list (maybe truncated)
-                Log.d(TAG, "Msg " + firebaseMessageId + ": Final displayed content determined. Adding to list. Outcome: " + processingOutcome + ". Displayed: '" + (displayedContent != null && displayedContent.length() > 50 ? displayedContent.substring(0, 50) + "..." : displayedContent) + "'");
+                String logContent = (processedContentForAdapter != null && processedContentForAdapter.length() > 50) ? processedContentForAdapter.substring(0, 50) + "..." : processedContentForAdapter;
+                Log.d(TAG, "Msg " + firebaseMessageId + ": Final processed content for adapter set. Outcome: " + processingOutcome + ". Displayed: '" + logContent + "'");
 
 
                 messagesArrayList.add(displayedMessageEntity); // Add the processed message to the list for the adapter
 
             } // End of for loop
-        } // End of if (currentMessages != null && !currentMessages.isEmpty()) check
+        } else {
+            Log.d(TAG, "No messages found in LiveData for owner " + messageSenderID + " in conversation " + conversationId);
+        }
 
 
-        // Sort the list (if necessary, should already be sorted by DAO query which orders by timestamp ASC)
+        // Sort the list if necessary (should already be sorted by DAO query which orders by timestamp ASC)
         // Ensure sorting is consistent with the Room query's order (usually by timestamp)
         if (messagesArrayList.size() > 1) {
+            // Using the timestamp from the MessageEntity which comes from Firebase/Local initial save
             Collections.sort(messagesArrayList, (m1, m2) -> Long.compare(m1.getTimestamp(), m2.getTimestamp()));
+            // Log.d(TAG, "Messages list sorted by timestamp.");
         }
 
 
@@ -2838,33 +3318,46 @@ public class ChatPageActivity extends AppCompatActivity implements
         if (!messagesArrayList.isEmpty() && messagesList != null && messagesList.getLayoutManager() != null) {
             LinearLayoutManager layoutManager = (LinearLayoutManager) messagesList.getLayoutManager();
             if (layoutManager.getItemCount() > 0) {
-                int lastVisiblePosition = layoutManager.findLastVisibleItemPosition();
+                int lastVisibleItemPosition = layoutManager.findLastVisibleItemPosition();
                 int totalItemCount = layoutManager.getItemCount();
 
-                // Auto-scroll if near the bottom OR if it's likely the initial small load
-                // Increased tolerance for "near bottom" check
-                int scrollTolerance = 10; // Scroll if within this many items from the end
-                boolean isAtBottom = lastVisiblePosition != RecyclerView.NO_POSITION && lastVisiblePosition == totalItemCount - 1;
-                boolean isNearBottom = lastVisiblePosition != RecyclerView.NO_POSITION && lastVisiblePosition >= totalItemCount - 1 - scrollTolerance;
-                boolean isInitialLoad = messagesArrayList.size() > 0 && totalItemCount == messagesArrayList.size() && messagesArrayList.size() < 50; // Heuristic for initial load size
+                // Auto-scroll if user is near the bottom or if it's a fresh load
+                int scrollTolerance = 15; // Scroll if within this many items from the end (increased tolerance)
+                boolean isAtBottom = lastVisibleItemPosition != RecyclerView.NO_POSITION && lastVisibleItemPosition >= totalItemCount - 1;
+                // Check if the user is currently within the scroll tolerance distance from the last item
+                boolean isNearBottom = lastVisibleItemPosition != RecyclerView.NO_POSITION && lastVisibleItemPosition >= totalItemCount - 1 - scrollTolerance;
+                boolean isInitialLoad = totalItemCount > 0 && messagesArrayList.size() == totalItemCount && totalItemCount < 50; // Heuristic for initial small load
 
-                if (isAtBottom || isNearBottom || isInitialLoad) { // Keep modified condition
+                // Log detailed scroll state
+                // Log.d(TAG, "Scroll Check: Total items=" + totalItemCount + ", Last visible=" + lastVisibleItemPosition + ", Is at bottom=" + isAtBottom + ", Is near bottom ("+scrollTolerance+")=" + isNearBottom + ", Is Initial Load=" + isInitialLoad);
+
+
+                if (isAtBottom || isNearBottom || isInitialLoad) {
+                    // Scroll smoothly if possible, otherwise just scroll
                     messagesList.scrollToPosition(totalItemCount - 1);
-                    Log.d(TAG, "Auto-scrolling to bottom. Total items: " + totalItemCount + ", Last visible: " + lastVisiblePosition + ", Is near bottom: " + isNearBottom + ", Is at bottom: " + isAtBottom + ", Is Initial Load (heuristic): " + isInitialLoad);
+                    Log.d(TAG, "Auto-scrolling to position " + (totalItemCount - 1));
                 } else {
-                    Log.d(TAG, "Skipping auto-scroll. User is not near bottom. Total items: " + totalItemCount + ", Last visible: " + lastVisiblePosition);
+                    Log.d(TAG, "Skipping auto-scroll. User is not near bottom.");
                 }
-            } else if (messagesList != null && messagesList.getLayoutManager() != null && ((LinearLayoutManager) messagesList.getLayoutManager()).getItemCount() == 0) {
-                Log.d(TAG, "Message list is empty after forceRefreshDisplay, no scrolling.");
+            } else {
+                Log.d(TAG, "Message list is empty, no scrolling needed.");
             }
             // Else case (messagesList or LayoutManager null) handled at the beginning of the method
+        } else if (messagesList != null && messagesList.getLayoutManager() != null && ((LinearLayoutManager) messagesList.getLayoutManager()).getItemCount() == 0) {
+            Log.d(TAG, "Message list is empty after forceRefreshDisplay, no scrolling.");
         }
 
 
-        // Mark visible messages as seen (Keep existing logic)
-        // This should happen AFTER the adapter is updated and potentially scrolled
-        // Adding a slight delay can sometimes help ensure layout finishes before checking visible items
-        messagesList.postDelayed(this::markVisibleMessagesAsSeen, 100);
+        // Mark visible messages as seen
+        // This should happen AFTER the adapter is updated and potentially scrolled.
+        // Adding a slight delay can help ensure layout finishes before checking visible items.
+        // Only mark as seen if the activity is resumed (user is seeing the chat).
+        if (getLifecycle().getCurrentState().isAtLeast(Lifecycle.State.RESUMED)) {
+            messagesList.postDelayed(this::markVisibleMessagesAsSeen, 100);
+            Log.d(TAG, "Posted delayed task to mark visible messages as seen.");
+        } else {
+            Log.d(TAG, "Activity not resumed, skipping marking visible messages as seen.");
+        }
 
 
         // --- Check and Update UI enabled state based on the *current* KeyManager state ---
@@ -2872,28 +3365,32 @@ public class ChatPageActivity extends AppCompatActivity implements
         // This check is done dynamically here regardless of the initial state.
         boolean isSecureChatCurrentlyAvailable = isPrivateKeyAvailable && isConversationKeyAvailable; // *** MODIFIED CHECK ***
 
-        if (isSecureChatCurrentlyAvailable && (messageInputText != null && !messageInputText.isEnabled())) {
+        // Get the current state of the input UI (check one representative element)
+        boolean isUiCurrentlyEnabled = messageInputText != null && messageInputText.isEnabled();
+
+        if (isSecureChatCurrentlyAvailable && !isUiCurrentlyEnabled) {
             // Keys are now available, and UI was previously disabled. Enable UI.
-            if (messageInputText != null) { messageInputText.setEnabled(true); messageInputText.setHint("Enter Message..."); }
+            if (messageInputText != null) { messageInputText.setEnabled(true); messageInputText.setHint("Type The Messages..."); }
             if (sendMessageButton != null) sendMessageButton.setEnabled(true);
-            if (send_imgmsg_btn != null) send_imgmsg_btn.setEnabled(true);
+            if (attachmentButton != null) attachmentButton.setEnabled(true); // Enable attachment button
             Log.d(TAG, "forceRefreshDisplay enabled UI as keys are now available.");
-        } else if (!isSecureChatCurrentlyAvailable && (messageInputText != null && messageInputText.isEnabled())) {
+            // No need for toast here, a toast about secure chat becoming available might happen elsewhere (e.g., after key generation/load)
+
+        } else if (!isSecureChatCurrentlyAvailable && isUiCurrentlyEnabled) {
             // Keys are now unavailable, and UI was previously enabled. Disable UI.
             if (messageInputText != null) { messageInputText.setEnabled(false); messageInputText.setHint("Secure chat unavailable"); }
             if (sendMessageButton != null) sendMessageButton.setEnabled(false);
-            if (send_imgmsg_btn != null) send_imgmsg_btn.setEnabled(false);
-            Log.d(TAG, "forceRefreshDisplay disabled UI as keys are now unavailable.");
+            if (attachmentButton != null) attachmentButton.setEnabled(false); // Disable attachment button
+            Log.w(TAG, "forceRefreshDisplay disabled UI as keys are now unavailable.");
             // Show a toast indicating why UI is disabled
             if (!isPrivateKeyAvailable) {
                 Toast.makeText(this, "Account not unlocked. Secure chat disabled.", Toast.LENGTH_SHORT).show();
             } else if (!isConversationKeyAvailable) {
                 Toast.makeText(this, "Secure chat key missing. Secure chat disabled.", Toast.LENGTH_SHORT).show();
             } else {
-                // Generic fallback toast
+                // Generic fallback toast (should be covered by above, but defensive)
                 Toast.makeText(this, "Secure chat unavailable.", Toast.LENGTH_SHORT).show();
             }
-
         } else {
             // UI state is already consistent with key state, no change needed.
             Log.d(TAG, "forceRefreshDisplay: UI state already consistent with key state (Secure Chat Available: " + isSecureChatCurrentlyAvailable + ").");
@@ -2901,23 +3398,14 @@ public class ChatPageActivity extends AppCompatActivity implements
         Log.d(TAG, "✅ forceRefreshDisplay finished.");
     }
 
+    // --- Helper method to check if a string looks like Base64 data ---
+// Useful for differentiating raw text from Base64 image data when checking long press options.
+// This is a simple heuristic, not a perfect validator.
 
-    private void showImageSourceDialog() {
-        Log.d(TAG, "Showing image source dialog.");
-        new AlertDialog.Builder(this)
-                .setTitle("Choose Image Source")
-                .setItems(new CharSequence[]{"Gallery", "Camera"}, (dialog, which) -> {
-                    switch (which) {
-                        case 0: // Gallery option clicked
-                            openGallery(); // We'll create this method
-                            break;
-                        case 1: // Camera option clicked
-                            openCamera(); // We'll create this method
-                            break;
-                    }
-                })
-                .show();
-    }
+
+
+// ... (Keep the rest of your ChatPageActivity methods) ...
+
 
 
 
@@ -2965,75 +3453,129 @@ public class ChatPageActivity extends AppCompatActivity implements
 
 
 
-    // This method takes the image URI, processes it (resize, encode), and prepares it for sending.
+
     private void processSelectedImageForSending(@Nullable Uri uri) {
+        // --- Step 1: Clear any previously selected image state ---
+        clearSelectedImage(); // Clear the previous state FIRST
+
         if (uri == null) {
-            Log.w(TAG, "processSelectedImageForSending called with null URI.");
-            imageToSendUri = null; // Ensure temporary URI is cleared if it was from camera
-            imageToSendBase64 = "";
-            // TODO: Update UI if any preview was shown before processing failed
+            Log.w(TAG, "processSelectedImageForSending called with null URI after clearing previous state.");
+            runOnUiThread(() -> Toast.makeText(ChatPageActivity.this, "Failed to load image.", Toast.LENGTH_SHORT).show());
             return;
         }
 
         Log.d(TAG, "Processing selected/captured image for sending. URI: " + uri);
 
-        try {
-            // Get Bitmap from URI
-            Bitmap originalBitmap = MediaStore.Images.Media.getBitmap(this.getContentResolver(), uri);
-            Log.d(TAG, "Original image dimensions: " + originalBitmap.getWidth() + "x" + originalBitmap.getHeight());
-
-            // Resize Bitmap
-            Bitmap resizedBitmap = resizeBitmap(originalBitmap, MAX_IMAGE_SEND_SIZE, MAX_IMAGE_SEND_SIZE); // Use MAX_IMAGE_SEND_SIZE
-            Log.d(TAG, "Resized image dimensions for sending: " + resizedBitmap.getWidth() + "x" + resizedBitmap.getHeight());
-
-            // Encode to Base64
-            String tempBase64 = encodeToBase64(resizedBitmap); // Encode the resized image to Base64
-            Log.d(TAG, "Encoded image to Base64 for sending. Length: " + (tempBase64 != null ? tempBase64.length() : 0) + " bytes.");
-
-            if (TextUtils.isEmpty(tempBase64)) {
-                Log.e(TAG, "Encoded Base64 image content is empty!");
-                Toast.makeText(this, "Failed to encode image data.", Toast.LENGTH_SHORT).show();
-                // Clean up temp URI if needed
-                if (uri != null && uri.toString().contains("content://media")) { // Check if it's likely a MediaStore URI from camera
-                    try { getContentResolver().delete(uri, null, null); } catch (Exception e) { Log.e(TAG, "Failed to delete temporary camera file after encode failure.", e); }
+        // Run image processing on a background thread
+        new Thread(() -> {
+            try {
+                InputStream inputStream = getContentResolver().openInputStream(uri);
+                Bitmap originalBitmap = null;
+                if (inputStream != null) {
+                    originalBitmap = BitmapFactory.decodeStream(inputStream);
+                    inputStream.close();
                 }
-                imageToSendUri = null; // Clear temp URI variable
-                imageToSendBase64 = ""; // Ensure our member variable is empty
-                return; // Stop processing here
+
+                if (originalBitmap == null) {
+                    Log.e(TAG, "Failed to get bitmap from URI: " + uri);
+                    runOnUiThread(() -> Toast.makeText(ChatPageActivity.this, "Failed to load image.", Toast.LENGTH_SHORT).show());
+                    clearSelectedImage(); // Clear state if processing fails
+                    return;
+                }
+
+                Log.d(TAG, "Original image dimensions: " + originalBitmap.getWidth() + "x" + originalBitmap.getHeight());
+
+                // Resize Bitmap
+                Bitmap resizedBitmap = resizeBitmap(originalBitmap, MAX_IMAGE_SEND_SIZE, MAX_IMAGE_SEND_SIZE);
+                originalBitmap.recycle();
+
+                if (resizedBitmap == null) {
+                    Log.e(TAG, "Failed to resize bitmap.");
+                    runOnUiThread(() -> Toast.makeText(ChatPageActivity.this, "Failed to process image.", Toast.LENGTH_SHORT).show());
+                    clearSelectedImage(); // Clear state if processing fails
+                    return;
+                }
+                Log.d(TAG, "Resized image dimensions for sending: " + resizedBitmap.getWidth() + "x" + resizedBitmap.getHeight());
+
+
+                // Encode resized Bitmap to Base64 (This is the content to send)
+                String base64Image = encodeToBase64(resizedBitmap);
+                resizedBitmap.recycle();
+
+                if (TextUtils.isEmpty(base64Image)) {
+                    Log.e(TAG, "Encoded Base64 image content is empty!");
+                    runOnUiThread(() -> Toast.makeText(ChatPageActivity.this, "Failed to encode image data.", Toast.LENGTH_SHORT).show());
+                    clearSelectedImage(); // Clear state if encoding fails
+                    return;
+                }
+
+                // --- Image Processed Successfully ---
+                imageToSendBase64 = base64Image; // Store the Base64 string
+
+                // Store the original URI too if it was a camera file that needs cleanup later
+                // Check if this URI is a temporary file URI managed by FileProvider/MediaStore
+                boolean isTempFileUri = false;
+                if (uri != null && uri.getAuthority() != null && uri.getAuthority().equals(getApplicationContext().getPackageName() + ".fileprovider")) { // Check FileProvider authority
+                    isTempFileUri = true;
+                } else if (uri != null && uri.getPath() != null && (uri.getPath().contains("/cache/") || uri.getPath().contains("/files/Pictures/"))) { // Heuristic check for common temp locations
+                    // This check might be less reliable, consider using FileProvider exclusively for temp files
+                }
+
+                if (isTempFileUri) {
+                    imageToSendUri = uri; // Keep track of the temp URI for cleanup
+                    Log.d(TAG, "Keeping temporary URI for cleanup: " + imageToSendUri);
+                } else {
+                    // This URI is from gallery or unknown source, no need to track for cleanup
+                    imageToSendUri = null;
+                }
+
+
+                Log.d(TAG, "Image processed and Base64 stored. Showing preview.");
+
+                // --- Show the image preview and Cancel button (on Main Thread) ---
+                runOnUiThread(() -> {
+                    try {
+                        // Use Glide to load the selected URI into the preview ImageView
+                        if (imgPreview != null) {
+                            Glide.with(ChatPageActivity.this)
+                                    .load(uri) // Load from the original URI for better quality in preview
+                                    .placeholder(R.drawable.image_placeholder_background) // Optional placeholder
+                                    .into(imgPreview);
+                        }
+
+
+                        if (imagePreviewContainer != null) imagePreviewContainer.setVisibility(View.VISIBLE);
+                        if (btnCancelImage != null) btnCancelImage.setVisibility(View.VISIBLE);
+
+                        // Do NOT hide etMessage here. Keep it visible for text input.
+
+                        Toast.makeText(ChatPageActivity.this, "Image ready to send.", Toast.LENGTH_SHORT).show();
+
+                    } catch (Exception e) {
+                        Log.e(TAG, "Error showing image preview on Main Thread", e);
+                        runOnUiThread(() -> Toast.makeText(ChatPageActivity.this, "Error showing image preview.", Toast.LENGTH_SHORT).show());
+                        clearSelectedImage(); // Clear state if preview fails
+                    }
+                });
+
+
+            } catch (IOException e) {
+                Log.e(TAG, "Image processing failed (IOException) for sending.", e);
+                runOnUiThread(() -> Toast.makeText(ChatPageActivity.this, "Failed to process image.", Toast.LENGTH_SHORT).show());
+                clearSelectedImage();
+            } catch (SecurityException e) { // Catch potential SecurityException on getContentResolver().openInputStream()
+                Log.e(TAG, "Security Exception during image processing (missing permissions?) for sending.", e);
+                runOnUiThread(() -> Toast.makeText(ChatPageActivity.this, "Permission error accessing image.", Toast.LENGTH_SHORT).show());
+                clearSelectedImage();
             }
-
-            // *** NEW STEP: IMMEDIATELY SEND THE IMAGE AFTER SUCCESSFUL PROCESSING ***
-            Log.d(TAG, "Image processed successfully. Initiating send.");
-            sendImageMessage(tempBase64); // Call your method to send the image message
-            // *** END NEW STEP ***
-
-            // After sending is initiated (asynchronous), clear the temporary image data
-            // Note: The UI might update later based on the message status (pending -> sent/failed)
-            imageToSendUri = null; // Clear the URI
-            imageToSendBase64 = ""; // Clear the Base64 string
-
-            // TODO: Update UI if any preview was shown before sending
-            // If sending immediately, you might not show a preview first.
-            // The UI update should happen when the message status changes (handled by your message adapter).
-
-            // Optional toast confirming processing is done and sending is initiated
-            Toast.makeText(this, "Image processed, sending...", Toast.LENGTH_SHORT).show();
-
-
-        } catch (IOException e) {
-            Log.e(TAG, "Image processing failed for sending (IOException).", e);
-            Toast.makeText(this, "Failed to process image.", Toast.LENGTH_SHORT).show();
-            imageToSendUri = null;
-            imageToSendBase64 = "";
-            // TODO: Update UI
-        } catch (Exception e) { // Catch any other unexpected errors during processing
-            Log.e(TAG, "Unexpected error during image processing for sending.", e);
-            Toast.makeText(this, "An error occurred processing image.", Toast.LENGTH_SHORT).show();
-            imageToSendUri = null;
-            imageToSendBase64 = "";
-            // TODO: Update UI
-        }
+            catch (Exception e) { // Catch any other unexpected errors during processing
+                Log.e(TAG, "Unexpected error during image processing for sending.", e);
+                runOnUiThread(() -> Toast.makeText(ChatPageActivity.this, "An error occurred processing image.", Toast.LENGTH_SHORT).show());
+                clearSelectedImage();
+            }
+        }).start(); // Start the background thread
     }
+// --- END Modified Helper Method ---
 // --- END NEW Helper Method ---
 
     private Bitmap resizeBitmap(Bitmap bitmap, int maxWidth, int maxHeight) {
@@ -3068,71 +3610,823 @@ public class ChatPageActivity extends AppCompatActivity implements
 // --- End Image Processing Helpers ---
 
 
-    // --- Helper Method to Launch Camera Intent (Called AFTER permission check) ---
-// This method contains the actual logic to prepare the URI and launch the camera app.
-    private void launchCameraIntent() {
-        Log.d(TAG, "Attempting to launch camera intent.");
-        try {
-            // Create a new content:// URI for the picture in MediaStore.
-            // This is the preferred modern way (API 29+).
-            // On older APIs or for specific storage needs, you might need WRITE_EXTERNAL_STORAGE
-            // permission and a FileProvider setup in Manifest and res/xml/file_paths.xml.
-            // Using getContentResolver().insert() here relies on the system's MediaStore handling.
-            imageToSendUri = getContentResolver().insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, new ContentValues());
 
-            if (imageToSendUri != null) {
-                Log.d(TAG, "Prepared temporary URI for camera: " + imageToSendUri);
-                // Launch camera, output will be saved to this URI
-                takePictureLauncher.launch(imageToSendUri);
-            } else {
-                Log.e(TAG, "Failed to create temporary URI for camera picture.");
-                Toast.makeText(this, "Error preparing camera.", Toast.LENGTH_SHORT).show();
+    // --- NEW Helper Method: Clear Selected Image ---
+    private void clearSelectedImage() {
+        Log.d(TAG, "Clearing selected image.");
+        imageToSendBase64 = ""; // Clear the Base64 data
+        // Clean up temporary camera file if it exists (logic already exists in your code)
+        if (imageToSendUri != null) {
+            try {
+                // Ensure the URI is one we actually created and need to delete
+                // Check against your FileProvider authority or other temp file indicators
+                if (imageToSendUri.getAuthority() != null && imageToSendUri.getAuthority().equals(getApplicationContext().getPackageName() + ".fileprovider")) { // Replace "your_file_provider_authority"
+                    getContentResolver().delete(imageToSendUri, null, null);
+                    Log.d(TAG, "Cleaned up temporary camera file: " + imageToSendUri);
+                } else {
+                    // If it's not a temp camera URI we created, maybe it's a gallery URI, no deletion needed
+                    Log.d(TAG, "Selected image URI is not a recognized temporary file URI. Skipping cleanup.");
+                }
+            } catch (Exception e) {
+                Log.w(TAG, "Failed to delete temporary camera file.", e);
             }
-        } catch (Exception e) {
-            Log.e(TAG, "Error creating URI for camera picture or launching intent.", e);
-            // This catch block handles potential exceptions during URI creation or intent launch
-            Toast.makeText(this, "Error accessing camera.", Toast.LENGTH_SHORT).show();
-            imageToSendUri = null; // Ensure URI is null on failure
+        }
+        imageToSendUri = null; // Clear the URI reference
+
+        // Hide the image preview and show text input
+        if (imagePreviewContainer != null) imagePreviewContainer.setVisibility(View.GONE);
+        if (btnCancelImage != null) btnCancelImage.setVisibility(View.GONE);
+        if (imgPreview != null) imgPreview.setImageDrawable(null); // Clear the ImageView content
+
+        // Make sure text input is visible again
+        if (messageInputText != null) {
+            messageInputText.setVisibility(View.VISIBLE); // Ensure text input is visible
+            // Optionally clear text input here too if you want (e.g., if user changes mind after typing)
+            // etMessage.setText("");
+            // etMessage.setHint("Enter Message..."); // Restore hint
         }
     }
 // --- END NEW Helper Method ---
 
 
-    // --- NEW Helper Method: Contains the logic to open the Gallery intent ---
-    private void openGallery() {
-        Log.d(TAG, "Attempting to open gallery.");
+    // --- NEW Method to Attempt Sending Message(s) ---
+    // Inside ChatPageActivity class
+
+    // --- NEW Method to Attempt Sending Message(s) ---
+// Inside ChatPageActivity class
+
+    // --- Modified Method to Attempt Sending Message(s) ---
+    private void attemptSendMessage() {
+        String messageText = messageInputText.getText().toString().trim();
+        boolean isImageStaged = !TextUtils.isEmpty(imageToSendBase64);
+
+        // Capture the current state of the flag before potentially resetting it
+        boolean isInvisibleInkModeActive = isInvisibleInkSelected; // Renamed for clarity within this method
+
+        // --- Basic Validation: Ensure *something* is available to send ---
+        // If no text AND no image, don't send anything. Also, if Invisible Ink mode was on,
+        // reset it because the user didn't send anything.
+        if (TextUtils.isEmpty(messageText) && !isImageStaged) {
+            Toast.makeText(this, "Please enter a message or select an image!", Toast.LENGTH_SHORT).show();
+            Log.d(TAG, "attemptSendMessage: Attempted send with empty text and no staged image.");
+
+            // Reset the flag if nothing was sent, even if the mode was active
+            if (isInvisibleInkModeActive) {
+                isInvisibleInkSelected = false; // Reset flag
+                // Optional: Reset UI indicator if any (like send button icon or hint)
+                // if (sendMessageButton != null) sendMessageButton.setImageResource(R.drawable.send_msg);
+                // if (messageInputText != null) messageInputText.setHint("Type The Messages...");
+                Log.d(TAG, "attemptSendMessage: Resetting Invisible Ink flag as nothing was sent.");
+            }
+            return; // Nothing to send
+        }
+
+        // --- Secure Chat Availability Check (Keep existing) ---
+        // Secure chat is required for ANY message type we send because they are encrypted.
+        boolean isSecureChatAvailable = YourKeyManager.getInstance().isPrivateKeyAvailable() && YourKeyManager.getInstance().hasConversationKey(conversationId);
+        if (!isSecureChatAvailable) {
+            Log.w(TAG, "attemptSendMessage: Secure chat keys are not available. Blocking send.");
+            // ... (log and show toast about secure chat unavailability) ...
+            // Since keys are unavailable, reset Invisible Ink state too
+            if (isInvisibleInkModeActive) {
+                isInvisibleInkSelected = false; // Reset flag
+                // Optional: Reset UI indicator if any
+                // if (sendMessageButton != null) sendMessageButton.setImageResource(R.drawable.send_msg);
+                // if (messageInputText != null) messageInputText.setHint("Type The Messages...");
+            }
+            // UI elements are already disabled by onResume/onCreate logic based on key availability
+            return; // Do not proceed if keys are not available
+        }
+        // --- END Secure Chat Check ---
+
+
+        // --- Send Text Message if available ---
+        // Send text message with the Invisible Ink flag
+        if (!TextUtils.isEmpty(messageText)) {
+            Log.d(TAG, "attemptSendMessage: Attempting to send text message. Invisible Ink mode active: " + isInvisibleInkModeActive);
+            SendTextMessage(messageText, isInvisibleInkModeActive); // Pass the flag to text sender
+            // SendTextMessage will clear etMessage upon successful initiation.
+        }
+
+
+        // --- Send Image Message if available ---
+        // Send image message with the Invisible Ink flag
+        if (isImageStaged) {
+            Log.d(TAG, "attemptSendMessage: Attempting to send staged image message. Invisible Ink mode active: " + isInvisibleInkModeActive);
+            sendImageMessage(imageToSendBase64, isInvisibleInkModeActive); // *** MODIFIED: Pass the flag to image sender ***
+            // sendImageMessage does NOT clear etMessage. It also doesn't clear the image preview; we do that below.
+        }
+
+
+        // --- Clean up UI and State after initiating send(s) ---
+        // Clear the text input field only if text was sent (SendTextMessage handles this)
+        // Clear the staged image regardless of whether text was also sent
+        clearSelectedImage(); // This clears imageToSendBase64/Uri and hides the preview UI.
+
+        // *** IMPORTANT: Reset the Invisible Ink state after attempting to send ***
+        // This ensures the *next* message defaults back to normal unless Invisible Ink is selected again.
+        isInvisibleInkSelected = false;
+        // Optional: Reset UI indicator if any
+        // if (sendMessageButton != null) sendMessageButton.setImageResource(R.drawable.send_msg); // Restore original icon
+        // if (messageInputText != null) messageInputText.setHint("Type The Messages..."); // Restore original hint
+        Log.d(TAG, "attemptSendMessage: Resetting Invisible Ink flag after send attempt.");
+        // --- END Clean up ---
+
+        Log.d(TAG, "attemptSendMessage: Send initiation complete.");
+    }
+// --- END Modified Method ---
+
+    // --- NEW Method: Show Image Source Dialog for Attachments ---
+    // --- NEW Method: Show Image Source Bottom Sheet Dialog for Attachments ---
+// Inside your ChatPageActivity class
+
+    private void showAttachmentOptionsBottomSheet() {
+        Log.d(TAG, "Showing attachment options bottom sheet dialog.");
+
+        // Secure Chat check *before* showing picker dialog (Keep this check)
+        boolean isSecureChatAvailable = YourKeyManager.getInstance().isPrivateKeyAvailable() && YourKeyManager.getInstance().hasConversationKey(conversationId);
+        if (!isSecureChatAvailable) {
+            Toast.makeText(this, "Secure chat is not enabled to send attachments.", Toast.LENGTH_SHORT).show();
+            Log.w(TAG, "Attachment picker blocked: Secure chat keys unavailable.");
+            return;
+        }
+
+        // Clear any previously selected image before showing options
+        clearSelectedImage(); // ADDED: Important to clear previous selection
+
+
+        BottomSheetDialog bottomSheetDialog = new BottomSheetDialog(this);
+        // Inflate the custom layout for the bottom sheet
+        View bottomSheetView = LayoutInflater.from(this).inflate(
+                R.layout.dialog_attachment_options, // Use your custom layout
+                null
+        );
+        bottomSheetDialog.setContentView(bottomSheetView);
+
+        // Find the option layouts in the custom view
+        LinearLayout layoutGallery = bottomSheetView.findViewById(R.id.layout_gallery_option);
+        LinearLayout layoutCamera = bottomSheetView.findViewById(R.id.layout_camera_option);
+        LinearLayout layoutInvisibleInk = bottomSheetView.findViewById(R.id.layout_invisible_ink_option);
+        // Find the NEW Shared Drawing option layout
+        LinearLayout layoutSharedDrawing = bottomSheetView.findViewById(R.id.layout_shared_drawing_option); // <<< FIND THE NEW ID
+
+
+        // Set Click Listeners for options
+        layoutGallery.setOnClickListener(v -> {
+            Log.d(TAG, "Gallery option clicked in bottom sheet.");
+            bottomSheetDialog.dismiss(); // Dismiss the dialog
+            openGalleryForAttachment(); // Call your existing method to open gallery
+        });
+
+        layoutCamera.setOnClickListener(v -> {
+            Log.d(TAG, "Camera option clicked in bottom sheet.");
+            bottomSheetDialog.dismiss(); // Dismiss the dialog
+            openCameraForAttachment(); // Call your existing method to open camera (which includes permission check)
+        });
+
+        layoutInvisibleInk.setOnClickListener(v -> {
+            Log.d(TAG, "Invisible Ink option clicked.");
+            bottomSheetDialog.dismiss(); // Dismiss the dialog
+
+            // *** Set the flag for the next message ***
+            isInvisibleInkSelected = true;
+            Log.d(TAG, "Invisible Ink mode activated for the next message.");
+
+            // *** Optional: Give the user visual feedback ***
+            runOnUiThread(() -> {
+                Toast.makeText(ChatPageActivity.this, "Type your message and press Send. It will be sent as Invisible Ink.", Toast.LENGTH_SHORT).show();
+                // You can also change the Send button's icon or change the hint text in the input field
+            });
+
+        });
+
+        // *** ADD Click Listener for the NEW Shared Drawing option ***
+        if (layoutSharedDrawing != null) { // Add null check for safety
+            layoutSharedDrawing.setOnClickListener(v -> {
+                Log.d(TAG, "Shared Drawing option clicked.");
+                bottomSheetDialog.dismiss(); // Dismiss the dialog
+
+                // *** STEP 1 COMPLETE: Placeholder call to the next step's method ***
+                // This method will handle checking secure chat status again and initiating the drawing session flow
+                confirmStartOneToOneDrawingSession(); // <<< CALL THE NEW METHOD HERE
+                // *** END STEP 1 ***
+            });
+        } else {
+            Log.w(TAG, "layout_shared_drawing_option not found in bottom sheet layout!");
+            // Optionally hide the option in the layout if it's missing, or show a toast.
+        }
+
+
+        // Add listeners for other attachment types here later
+
+        // Show the bottom sheet dialog
+        bottomSheetDialog.show();
+    }
+    // --- END NEW Method ---
+// Inside your ChatPageActivity class
+
+    // --- NEW Helper Method: Contains the logic to open the Gallery intent for message attachment ---
+// This method is called from the BottomSheetDialog when "Gallery" is chosen.
+    private void openGalleryForAttachment() {
+        Log.d(TAG, "Attempting to open gallery for attachment.");
         try {
+            // No explicit storage permission needed for ACTION_PICK on modern APIs (>= API 29)
+            // as long as you use MediaStore.Images.Media.EXTERNAL_CONTENT_URI.
+            // For older APIs or specific storage needs, you might still need READ_EXTERNAL_STORAGE.
+            // Your checkPermissionsAndOpenGallery (for wallpaper) handles the older API case.
+            // For ACTION_PICK with MediaStore URI, Android handles permissions automatically for you
+            // when providing the URI result.
             Intent intent = new Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
-            pickImageLauncher.launch(intent); // Launch gallery picker
+
+            // Optional but good practice: add flags for permission grant just in case
+            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+
+            // Use the pre-registered launcher to start the activity
+            pickImageLauncher.launch(intent);
+
         } catch (Exception e) {
-            Log.e(TAG, "Error launching gallery intent.", e);
-            Toast.makeText(this, "Error accessing gallery.", Toast.LENGTH_SHORT).show();
+            Log.e(TAG, "Error launching gallery intent for attachment.", e);
+            // Inform the user on the main thread
+            runOnUiThread(() -> Toast.makeText(ChatPageActivity.this, "Error accessing gallery.", Toast.LENGTH_SHORT).show());
         }
     }
 // --- END NEW Helper Method ---
 
 
-    // --- NEW Helper Method: Contains the logic to open the Camera intent ---
-// This method performs the permission check and then calls launchCameraIntent if granted.
-    private void openCamera() {
-        Log.d(TAG, "Attempting to open camera.");
+    // --- NEW Helper Method: Contains the logic to open the Camera intent for message attachment ---
+// This method is called from the BottomSheetDialog when "Camera" is chosen.
+// It first performs a permission check using the launcher.
+    private void openCameraForAttachment() {
+        Log.d(TAG, "Attempting to open camera for attachment.");
+
         // Check if the CAMERA permission is already granted
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA)
                 == PackageManager.PERMISSION_GRANTED) {
-            Log.d(TAG, "Camera permission already granted. Proceeding to launch camera intent.");
+            Log.d(TAG, "Camera permission already granted. Proceeding to launch camera intent for attachment.");
             // Permission is already granted, proceed with launching the camera intent
-            launchCameraIntent();
+            launchCameraIntentForAttachment(); // Call the method to launch the camera activity
         } else {
-            Log.d(TAG, "Camera permission not granted. Requesting permission.");
+            Log.d(TAG, "Camera permission not granted. Requesting permission using launcher.");
             // Permission is not granted, request it using the launcher
+            // The launcher's callback (in initializeImagePickers) will call launchCameraIntentForAttachment() if granted.
             requestCameraPermissionLauncher.launch(Manifest.permission.CAMERA);
         }
     }
 // --- END NEW Helper Method ---
 
 
+    // --- NEW Helper Method: Contains the logic to prepare the URI and launch the camera app FOR ATTACHMENT ---
+// This method should be called ONLY AFTER camera permission is confirmed
+// (either instantly if already granted by openCameraForAttachment,
+// or by the requestCameraPermissionLauncher callback).
+    private void launchCameraIntentForAttachment() {
+        Log.d(TAG, "Attempting to launch camera intent for attachment.");
+
+        // Clear any leftover temporary URI from a previous failed attempt or cancellation
+        if (imageToSendUri != null) {
+            Log.w(TAG, "launchCameraIntentForAttachment found existing imageToSendUri. Cleaning up: " + imageToSendUri);
+            try {
+                // Use the same cleanup logic as in clearSelectedImage
+                if (ContentResolver.SCHEME_CONTENT.equals(imageToSendUri.getScheme()) && imageToSendUri.getAuthority() != null && imageToSendUri.getAuthority().contains(getApplicationContext().getPackageName())) {
+                    getContentResolver().delete(imageToSendUri, null, null);
+                    Log.d(TAG, "Cleaned up previous temporary camera file.");
+                } else {
+                    Log.d(TAG, "Previous imageToSendUri is not a recognized temporary file URI. Skipping cleanup.");
+                }
+            } catch (Exception e) {
+                Log.w(TAG, "Failed to clean up previous temporary camera file.", e);
+            } finally {
+                imageToSendUri = null; // Always clear the reference
+            }
+        }
+
+
+        try {
+            // Create a new content:// URI in MediaStore for the picture output.
+            // This is the modern way and generally preferred over FileProvider for photos
+            // that you intend to save to the gallery area.
+            // For APIs < 29, this might still require WRITE_EXTERNAL_STORAGE, but MediaStore
+            // insert handles this complexity better than managing raw files with FileProvider.
+            // Let's use a simple insert that works well on modern Android.
+            ContentValues values = new ContentValues();
+            // Optional: Add display name or other details
+            // values.put(MediaStore.Images.Media.DISPLAY_NAME, "Attachment_" + System.currentTimeMillis() + ".jpg");
+            // values.put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg");
+
+            imageToSendUri = getContentResolver().insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values);
+
+
+            if (imageToSendUri != null) {
+                Log.d(TAG, "Prepared temporary URI for camera attachment: " + imageToSendUri);
+
+                Intent takePictureIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+                takePictureIntent.putExtra(MediaStore.EXTRA_OUTPUT, imageToSendUri);
+
+                // Grant write permission to the camera app for THIS specific URI
+                takePictureIntent.addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
+                // Also grant read permission, though less critical for output URI
+                takePictureIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+
+
+                // Verify that there's an app that can handle this intent
+                if (takePictureIntent.resolveActivity(getPackageManager()) != null) {
+                    Log.d(TAG, "Launching camera intent with URI: " + imageToSendUri);
+                    // Use the pre-registered launcher to start the activity.
+                    // The TakePicture contract takes the output URI directly.
+                    takePictureLauncher.launch(imageToSendUri);
+                } else {
+                    Log.w(TAG, "No camera app found to handle ACTION_IMAGE_CAPTURE intent.");
+                    runOnUiThread(() -> Toast.makeText(ChatPageActivity.this, "No camera app found.", Toast.LENGTH_SHORT).show());
+                    // Clean up the URI if we couldn't launch
+                    try {
+                        if (imageToSendUri != null && ContentResolver.SCHEME_CONTENT.equals(imageToSendUri.getScheme())) {
+                            getContentResolver().delete(imageToSendUri, null, null);
+                            Log.d(TAG, "Cleaned up temporary URI after failed camera launch.");
+                        }
+                    } catch (Exception cleanupEx) { Log.w(TAG, "Failed to cleanup URI after camera launch failure", cleanupEx); }
+                    imageToSendUri = null; // Clear the reference
+                }
+
+            } else {
+                Log.e(TAG, "Failed to create temporary URI for camera attachment picture using MediaStore.");
+                runOnUiThread(() -> Toast.makeText(ChatPageActivity.this, "Error preparing camera.", Toast.LENGTH_SHORT).show());
+            }
+        } catch (SecurityException e) {
+            Log.e(TAG, "Security Exception creating URI for camera picture (MediaStore?)", e);
+            runOnUiThread(() -> Toast.makeText(ChatPageActivity.this, "Permission error accessing storage for camera.", Toast.LENGTH_SHORT).show());
+            imageToSendUri = null; // Ensure URI is null on failure
+        }
+        catch (Exception e) {
+            Log.e(TAG, "Error creating URI for camera attachment picture or launching intent.", e);
+            // This catch block handles potential exceptions during URI creation or intent launch
+            runOnUiThread(() -> Toast.makeText(ChatPageActivity.this, "Error accessing camera.", Toast.LENGTH_SHORT).show());
+            imageToSendUri = null; // Ensure URI is null on failure
+        }
+    }
+// --- END NEW Helper Method ---
 
 
 
+    // Inside ChatPageActivity.java
+
+    // --- Implement the new OnMessageClickListener method ---
+    @Override // This method is implemented from the MessageAdapter.OnMessageClickListener interface
+    public void onMessageClicked(MessageEntity message) {
+        Log.d(TAG, "Message clicked in Activity: " + message.getFirebaseMessageId() +
+                ", Type: " + message.getType() +
+                ", Effect: " + message.getDisplayEffect() +
+                ", Revealed: " + message.isRevealed() +
+                ", From: " + message.getFrom() +
+                ", To: " + message.getTo());
+
+        // Check if it's an INCOMING (To is me) message...
+        // ... that is either a TEXT or IMAGE message... // *** MODIFIED CHECK ***
+        // ... that has the "invisible_ink" display effect...
+        // ... AND is currently NOT revealed.
+        if (message != null &&                 // Check if message is not null
+                message.getTo() != null && message.getTo().equals(messageSenderID) && // It's an incoming message for THIS user
+                ("text".equals(message.getType()) || "image".equals(message.getType())) && // *** MODIFIED: Include image type ***
+                "invisible_ink".equals(message.getDisplayEffect()) && // It's an Invisible Ink message
+                !message.isRevealed())              // It's not yet revealed locally
+        {
+            // This is an incoming, unrevealed Invisible Ink message (either text or image)
+            Log.d(TAG, "Incoming, unrevealed Invisible Ink message (Type: " + message.getType() + ") clicked. Attempting to reveal: " + message.getFirebaseMessageId());
+
+            // --- Update the isRevealed status in Room DB on a background thread ---
+            // The DAO method updateMessageRevealedStatus works for any message type,
+            // as long as you provide the correct firebaseMessageId and ownerUserId.
+            databaseWriteExecutor.execute(() -> {
+                try {
+                    // Call the DAO method to update the status
+                    int updatedRows = messageDao.updateMessageRevealedStatus(
+                            message.getFirebaseMessageId(),
+                            messageSenderID, // The message copy in Room is owned by the current user
+                            true // Set isRevealed to true
+                    );
+
+                    if (updatedRows > 0) {
+                        Log.d(TAG, "Successfully updated message " + message.getFirebaseMessageId() + " to revealed=true in Room. Rows updated: " + updatedRows);
+                        // The LiveData observer will detect this change and trigger forceRefreshDisplay,
+                        // which will cause the adapter to re-bind the message and show the content (decrypted text or image).
+                        Log.d(TAG, "Room update will trigger LiveData -> forceRefreshDisplay.");
+                    } else {
+                        Log.w(TAG, "Failed to update message " + message.getFirebaseMessageId() + " revealed status in Room. Message not found for owner " + messageSenderID + " or already revealed?");
+                        // Optionally inform the user on the main thread
+                        // runOnUiThread(() -> Toast.makeText(ChatPageActivity.this, "Failed to reveal message.", Toast.LENGTH_SHORT).show());
+                    }
+                } catch (Exception e) {
+                    Log.e(TAG, "Error updating message revealed status in Room for message: " + message.getFirebaseMessageId(), e);
+                    runOnUiThread(() -> Toast.makeText(ChatPageActivity.this, "Error revealing message.", Toast.LENGTH_SHORT).show());
+                }
+            });
+        } else {
+            Log.d(TAG, "Message clicked is not an unrevealed incoming Invisible Ink message for me. No action needed by reveal logic.");
+            // --- Handle Clicks on Other Message Types ---
+            // This block runs if the message is NOT an unrevealed incoming Invisible Ink message.
+            // You can add logic here for other message types' tap actions if needed.
+            // For instance, if you want clicking a normal text message to do something, add it here.
+            // Clicks on image messages might already be handled by the OnTouchListener in the adapter,
+            // but if not, you could handle opening fullscreen image here for revealed/normal images.
+
+            // Example (Handle clicking a normal/revealed image):
+            // if (message != null && "image".equals(message.getType()) && message.getMessage() != null && !message.getMessage().startsWith("[")) {
+            //     Log.d(TAG, "Revealed image message clicked: " + message.getFirebaseMessageId());
+            //     // Assuming message.getMessage() contains the Base64 for images after decryption
+            //     Intent intent = new Intent(this, ChatImgFullScreenViewer.class);
+            //     intent.putExtra("imageUrl", message.getMessage());
+            //     startActivity(intent);
+            // }
+            // For now, we just log and do nothing for other clicks based on your previous implementation.
+        }
+    }
+
+    // Inside ChatPageActivity.java class
+
+    /**
+     * Shows a confirmation dialog before starting a shared drawing session
+     * in this one-to-one chat. Checks if Secure Chat is enabled.
+     */
+    private void confirmStartOneToOneDrawingSession() {
+        Log.d(TAG, "Showing confirm start one-to-one drawing session dialog for conv: " + conversationId);
+
+        // --- Critical Check: Ensure Secure Chat is Available for THIS conversation ---
+        // Starting a drawing session in a secure chat requires the conversation key
+        // to potentially encrypt drawing data or for presence/sync authentication.
+        boolean isSecureChatAvailable = YourKeyManager.getInstance().isPrivateKeyAvailable() && YourKeyManager.getInstance().hasConversationKey(conversationId);
+        if (!isSecureChatAvailable) {
+            Log.w(TAG, "Cannot start shared drawing session: Secure chat is not fully available for conversation " + conversationId + " (Keys missing).");
+            runOnUiThread(() -> {
+                // Inform the user why drawing cannot be started
+                if (!YourKeyManager.getInstance().isPrivateKeyAvailable()) {
+                    Toast.makeText(ChatPageActivity.this, "Cannot start drawing: Your account is not unlocked.", Toast.LENGTH_LONG).show();
+                } else {
+                    Toast.makeText(ChatPageActivity.this, "Cannot start drawing: Secure chat key missing for this conversation. Try reopening chat or initiating key exchange.", Toast.LENGTH_LONG).show();
+                }
+            });
+            // Exit the method as we cannot proceed without keys
+            return;
+        }
+        // --- End Secure Chat Check ---
+
+
+        // Ensure context is not null before showing dialog
+        if (this == null) {
+            Log.w(TAG, "Context is null, cannot show start drawing confirmation dialog.");
+            return;
+        }
+
+        // Create and show the AlertDialog for confirmation
+        new AlertDialog.Builder(this)
+                .setTitle("Start Shared Drawing")
+                .setMessage("Are you sure you want to start a new shared drawing session with " + messageReceiverName + "?") // Include partner's name
+                .setPositiveButton("Yes, Start", (dialog, which) -> {
+                    Log.d(TAG, "Confirmation received: Starting one-to-one drawing session.");
+                    // Call the method that will handle creating the session and launching the activity (Implement this in Step 3)
+                    startOneToOneDrawingSession(); // <<< Call the next step's method
+                })
+                .setNegativeButton("Cancel", (dialog, which) -> {
+                    Log.d(TAG, "Start drawing session cancelled by user.");
+                    dialog.dismiss(); // Just dismiss the dialog
+                })
+                .setIcon(android.R.drawable.ic_dialog_info) // Optional: add an icon
+                .show(); // Show the dialog
+    }
+
+
+    /**
+     * Initiates the process of starting a new shared drawing session for this one-to-one chat.
+     * This involves creating a Firebase node for the session, sending a chat message link,
+     * and launching the drawing activity.
+     * This method should be called ONLY AFTER confirmation and Secure Chat check.
+     */
+    private void startOneToOneDrawingSession() {
+        Log.d(TAG, "Initiating startOneToOneDrawingSession for conv: " + conversationId);
+
+        // Check for essential data (Firebase refs, user info, conversation ID)
+        // rootRef, messageSenderID, messageReceiverID, conversationId, currentUserName
+        // should be initialized in onCreate or GetUserInfo.
+        if (rootRef == null || TextUtils.isEmpty(conversationId) || TextUtils.isEmpty(messageSenderID) || TextUtils.isEmpty(messageReceiverID) || TextUtils.isEmpty(currentUserName)) {
+            Log.e(TAG, "Cannot start one-to-one drawing session: Required dependencies are null/empty.");
+            runOnUiThread(() -> Toast.makeText(ChatPageActivity.this, "Error starting drawing session. Missing setup info.", Toast.LENGTH_SHORT).show());
+            // Consider disabling the menu option or button if this happens unexpectedly after initial checks.
+            return;
+        }
+
+        // --- Step 1: Generate a unique ID for the new drawing session ---
+        // We need a node to store strokes and session state for THIS specific session.
+        // A good place might be under the conversation ID node itself.
+        DatabaseReference drawingSessionsRef = rootRef.child("Conversations").child(conversationId).child("drawingSessions");
+
+        // Generate a unique ID for the new session using push().getKey()
+        String newSessionId = drawingSessionsRef.push().getKey();
+
+        if (newSessionId == null) {
+            Log.e(TAG, "Failed to generate unique session ID from Firebase for one-to-one session.");
+            runOnUiThread(() -> Toast.makeText(ChatPageActivity.this, "Error starting drawing: Could not generate session ID.", Toast.LENGTH_SHORT).show());
+            return; // Stop if ID generation fails
+        }
+        Log.d(TAG, "Generated new one-to-one drawing session ID: " + newSessionId + " for conv: " + conversationId);
+
+
+        // --- Step 2: Prepare initial data for the new session node in Firebase ---
+        // This node will store metadata about the session (who started, state)
+        // and will be the parent node for strokes and active users.
+        HashMap<String, Object> sessionInfo = new HashMap<>();
+        sessionInfo.put("starterId", messageSenderID); // Store who started it
+        sessionInfo.put("createdAt", ServerValue.TIMESTAMP); // Store server timestamp
+        sessionInfo.put("state", "active"); // Set initial state to active
+        // For 1:1 chat, the participants are fixed and known.
+        // You might store them explicitly, or implicitly rely on the conversationId parent node.
+        // Let's store them for clarity, similar to group sessions:
+        HashMap<String, Boolean> participantsMap = new HashMap<>();
+        participantsMap.put(messageSenderID, true);
+        participantsMap.put(messageReceiverID, true);
+        sessionInfo.put("participants", participantsMap); // Store participants
+        // Also store the conversation ID itself for easier lookup from the session node if needed
+        sessionInfo.put("conversationId", conversationId); // Store the parent conversation ID
+
+
+        // --- Step 3: Write the initial session info to Firebase ---
+        drawingSessionsRef.child(newSessionId).setValue(sessionInfo)
+                .addOnSuccessListener(aVoid -> {
+                    Log.d(TAG, "New one-to-one drawing session node created in Firebase: " + newSessionId + " under conv: " + conversationId);
+
+                    // --- MODIFIED: Call the new method to send the chat link message and launch the activity ---
+                    sendOneToOneDrawingSessionLinkAndLaunchActivity(newSessionId);
+                })
+                .addOnFailureListener(e -> {
+                    Log.e(TAG, "Failed to create new one-to-one drawing session node in Firebase for conv " + conversationId, e);
+                    runOnUiThread(() -> Toast.makeText(ChatPageActivity.this, "Failed to start drawing session.", Toast.LENGTH_SHORT).show());
+                    // Optional: Clean up the partially created session node if the write failed
+                    // drawingSessionsRef.child(newSessionId).removeValue(); // This might require another task/thread
+                });
+    }
+
+
+// Inside ChatPageActivity.java class body { ... }
+
+    /**
+     * Sends the special chat message indicating a drawing session started
+     * and launches the drawing activity.
+     * Called after the Firebase session node (under Conversations/{convId}/drawingSessions/{sessionId})
+     * is successfully created.
+     */
+    // Inside ChatPageActivity.java class body { ... }
+
+    /**
+     * Sends the special chat message indicating a drawing session started
+     * and launches the drawing activity.
+     * Called after the Firebase session node (under Conversations/{convId}/drawingSessions/{sessionId})
+     * is successfully created by startOneToOneDrawingSession().
+     *
+     * This method handles:
+     * 1. Generating a Firebase push ID for the chat message.
+     * 2. Preparing the Firebase payload with message content, type, sender/receiver IDs, times, and session IDs/name.
+     * 3. Creating a local MessageEntity for Room with all relevant data.
+     * 4. Inserting the MessageEntity into Room DB (background thread).
+     * 5. Sending the message payload to Firebase (background thread).
+     * 6. On Firebase success:
+     *    a. Updating chat summaries for both sender and receiver.
+     *    b. Sending a push notification to the recipient with message/session data.
+     *    c. Updating the message status in Room to 'sent'.
+     *    d. Launching the drawing activity (main thread).
+     * 7. On Firebase failure:
+     *    a. Updating the message status in Room to 'failed'.
+     *    b. Showing a failure toast (main thread).
+     *
+     * @param sessionId The unique ID generated for the drawing session in Firebase.
+     *                  This ID is stored in the 'drawingSessionId' field of the chat message.
+     */
+    private void sendOneToOneDrawingSessionLinkAndLaunchActivity(String sessionId) {
+        Log.d(TAG, "sendOneToOneDrawingSessionLinkAndLaunchActivity called for session: " + sessionId + " in conv: " + conversationId);
+
+        // Check for essential data before proceeding
+        // rootRef, messageSenderID, messageReceiverID, conversationId, currentUserName should be initialized in onCreate/GetUserInfo
+        if (rootRef == null || TextUtils.isEmpty(conversationId) || TextUtils.isEmpty(messageSenderID) || TextUtils.isEmpty(messageReceiverID) || TextUtils.isEmpty(currentUserName) || TextUtils.isEmpty(sessionId)) {
+            Log.e(TAG, "Cannot send drawing session link: Required dependencies are null/empty. rootRef=" + (rootRef == null) + ", convId=" + TextUtils.isEmpty(conversationId) + ", senderId=" + TextUtils.isEmpty(messageSenderID) + ", receiverId=" + TextUtils.isEmpty(messageReceiverID) + ", userName=" + TextUtils.isEmpty(currentUserName) + ", sessionId=" + TextUtils.isEmpty(sessionId));
+            runOnUiThread(() -> Toast.makeText(ChatPageActivity.this, "Error sending drawing link message. Missing info.", Toast.LENGTH_SHORT).show());
+            return; // Stop execution if essential data is missing
+        }
+
+        // 1. Generate a unique push ID for the new chat message in Firebase
+        // This message goes into the main chat message list for this conversation.
+        // Use the conversationId to get the correct messages node.
+        DatabaseReference messagesRef = rootRef.child("Messages").child(conversationId).push();
+        String messagePushId = messagesRef.getKey(); // The unique ID for THIS message
+
+        if (messagePushId == null) {
+            Log.e(TAG, "Failed to generate unique message key from Firebase for drawing session link message.");
+            runOnUiThread(() -> Toast.makeText(ChatPageActivity.this, "Error sending drawing link: Failed to generate message ID.", Toast.LENGTH_SHORT).show());
+            return; // Stop if Firebase push ID generation fails
+        }
+        Log.d(TAG, "Generated Firebase push ID for drawing session link message: " + messagePushId);
+
+
+        // Prepare the text preview for this message type (used in chat list and notification)
+        String linkMessageText = currentUserName + " started a shared drawing session."; // Use current user's display name
+        Log.d(TAG, "Drawing link message preview text: '" + linkMessageText + "'");
+
+        // Get current local time for the sendTime string and immediate Room timestamp
+        String sendTime = new SimpleDateFormat("hh:mm a", Locale.getDefault()).format(new Date());
+        // Use Firebase ServerValue.TIMESTAMP for the actual timestamp stored in Firebase (for consistent sorting)
+        Object firebaseTimestamp = ServerValue.TIMESTAMP;
+        // Use local timestamp for immediate Room save and initial UI sorting until Firebase syncs the server timestamp
+        long localTimestamp = System.currentTimeMillis();
+
+
+        // 2. Create the Firebase payload map for the message
+        Map<String, Object> messageFirebaseBody = new HashMap<>();
+        messageFirebaseBody.put("message", linkMessageText); // Store the text preview in the 'message' field
+        messageFirebaseBody.put("type", "one_to_one_drawing_session_link"); // <<< CRUCIAL: The NEW message type identifier
+        messageFirebaseBody.put("from", messageSenderID); // Sender's UID
+        messageFirebaseBody.put("to", messageReceiverID); // Receiver's UID
+        messageFirebaseBody.put("sendTime", sendTime); // Use local formatted time string
+        messageFirebaseBody.put("timestamp", firebaseTimestamp); // Use ServerValue.TIMESTAMP for Firebase
+        messageFirebaseBody.put("seen", false); // Always send as not seen initially by recipient
+        messageFirebaseBody.put("seenTime", ""); // Seen time is empty initially
+
+        // --- Include conversationId, drawingSessionId, and name in the Firebase payload ---
+        // These fields are essential for the recipient's MessageAdapter to display the link correctly and launch the activity.
+        // They are also saved to Room when messages are received/synced.
+        messageFirebaseBody.put("conversationId", conversationId); // Store the conversation ID
+        messageFirebaseBody.put("drawingSessionId", sessionId); // Store the session ID (using the existing drawingSessionId field)
+        messageFirebaseBody.put("name", currentUserName); // Store sender's display name (needed by adapter)
+        // --- END Include IDs and name ---
+
+        // Optional: Add initial readBy map if your message structure includes it
+        // HashMap<String, Object> readByMap = new HashMap<>();
+        // readByMap.put(messageSenderID, true); // Sender has read their own message immediately
+        // messageFirebaseBody.put("readBy", readByMap);
+
+
+        // 3. Create MessageEntity for Room (store necessary data locally, status pending initially)
+        MessageEntity messageToSaveLocally = new MessageEntity();
+        messageToSaveLocally.setFirebaseMessageId(messagePushId); // Use the generated Firebase ID as the primary key
+        messageToSaveLocally.setOwnerUserId(messageSenderID); // The current user is the owner of this copy in Room
+        messageToSaveLocally.setMessage(linkMessageText); // Store the text preview locally (not encrypted for this type)
+        messageToSaveLocally.setType("one_to_one_drawing_session_link"); // Store the message type
+        messageToSaveLocally.setFrom(messageSenderID); // Sender is the current user
+        messageToSaveLocally.setTo(messageReceiverID); // Receiver is the chat partner
+        messageToSaveLocally.setSendTime(sendTime); // Use local formatted time string
+        messageToSaveLocally.setSeen(false); // Local seen status (will be updated by Firebase sync)
+        messageToSaveLocally.setSeenTime("");
+        messageToSaveLocally.setStatus("pending"); // Set status to pending initially (will be updated to 'sent' on Firebase success)
+        messageToSaveLocally.setTimestamp(localTimestamp); // *** Use local timestamp for initial Room order ***
+        messageToSaveLocally.setScheduledTime(null); // Not a scheduled message
+        messageToSaveLocally.setDisplayEffect("none"); // No special display effect for this type
+        messageToSaveLocally.setRevealed(true); // This message type is always visually "revealed"
+
+        // --- Store conversationId, sessionId (drawingSessionId), and name in the MessageEntity for Room ---
+        // These are needed by the Adapter when it displays this message type.
+        messageToSaveLocally.setConversationId(conversationId); // Store the Conversation ID
+        messageToSaveLocally.setDrawingSessionId(sessionId); // Store the Session ID in the drawingSessionId field
+        messageToSaveLocally.setName(currentUserName); // Store the sender's display name
+        // --- END Store IDs and name ---
+
+
+        // 4. Insert the message into Room DB first with "pending" status (on background thread)
+        // Using INSERT OR REPLACE strategy in the DAO handles both initial insert and potential updates.
+        databaseWriteExecutor.execute(() -> { // Execute on the shared database writer executor
+            try {
+                messageDao.insertMessage(messageToSaveLocally);
+                Log.d(TAG, "Inserted pending drawing session link into Room for owner " + messageSenderID + ": " + messagePushId + ", Local Timestamp: " + messageToSaveLocally.getTimestamp() + ", Session ID: " + sessionId + ", Conv ID: " + conversationId);
+            } catch (Exception e) {
+                Log.e(TAG, "Error inserting pending drawing session link into Room: " + messagePushId, e);
+                // Show error toast on the main thread if local save fails
+                runOnUiThread(() -> Toast.makeText(ChatPageActivity.this, "Error saving drawing link locally.", Toast.LENGTH_SHORT).show());
+                // Continue attempting to send to Firebase even if local save failed (design choice)
+            }
+
+
+            // 5. Send message data to Firebase (on background thread after Room insert initiated)
+            // Use the messagePushId generated earlier to write to the correct location.
+            messagesRef.setValue(messageFirebaseBody).addOnCompleteListener(task -> {
+                Log.d(TAG, "Firebase setValue for drawing session link message " + messagePushId + " completed. Success: " + task.isSuccessful());
+
+                if (task.isSuccessful()) {
+                    // Firebase write was successful
+
+                    // --- Update Chat Summaries for BOTH users ---
+                    // Update the chat summary entries for both the sender and the receiver.
+                    // The preview text is the linkMessageText.
+                    // The timestamp used for sorting in the summary list should be a Long.
+                    // Pass the localTimestamp here to avoid casting ServerValue.TIMESTAMP placeholder error.
+                    String summaryPreview = linkMessageText; // Use the text preview created earlier
+
+                    // Update sender's summary (last message is seen by sender immediately)
+                    updateChatSummaryForUser(
+                            messageSenderID, // Summary Owner 1 (Sender)
+                            messageReceiverID, // Partner 1 (Receiver)
+                            conversationId,
+                            messagePushId,
+                            summaryPreview, // Text preview for summary
+                            "one_to_one_drawing_session_link", // Message Type in summary
+                            localTimestamp, // <<< Pass localTimestamp here for summary sort
+                            messageSenderID // isGroupMessage (false for 1:1 chat summaries)
+                    );
+
+                    // Update receiver's summary (last message is unseen by receiver initially, unread count increments)
+                    updateChatSummaryForUser(
+                            messageReceiverID, // Summary Owner 2 (Receiver)
+                            messageSenderID, // Partner 2 (Sender)
+                            conversationId,
+                            messagePushId,
+                            summaryPreview, // Text preview for summary
+                            "one_to_one_drawing_session_link", // Message Type in summary
+                            localTimestamp, // <<< Pass localTimestamp here for summary sort
+                            messageSenderID // isGroupMessage (false for 1:1 chat summaries)
+                    );
+                    // --- END Update Chat Summaries ---
+
+
+                    // *** Send Push Notification ***
+                    // Send a push notification to the recipient (the other person in the 1:1 chat).
+                    Log.d(TAG, "Firebase drawing session link message sent successfully. Calling sendPushNotification.");
+                    String senderDisplayNameForNotification = (currentUserName != null && !currentUserName.isEmpty()) ? currentUserName : "Someone";
+                    // The content of the notification in the shade
+                    String notificationContent = senderDisplayNameForNotification + " started a shared drawing session."; // Use the preview text
+
+                    // Call the sendPushNotification helper method with all parameters
+                    // This method handles building the OneSignal payload and making the API call.
+                    sendPushNotification(
+                            messageReceiverID, // Recipient UID (the other person in the 1:1 chat)
+                            "New Drawing Session", // Notification Title (Can be customized)
+                            notificationContent, // Notification content (the preview text)
+                            "one_to_one_drawing_session_link", // <<< Pass the message type to the notification handler
+                            conversationId, // <<< Pass conversationId for notification data
+                            sessionId, // <<< Pass sessionId for notification data
+                            messagePushId // <<< Pass messageId (optional, but good practice for deep linking from notification)
+                    );
+                    // *** END Push Notification ***
+
+
+                    // --- Update status in Room DB for the SENDER's copy ---
+                    // Update the local message status in Room from 'pending' to 'sent'.
+                    // This happens on the same background executor.
+                    databaseWriteExecutor.execute(() -> {
+                        // Find the message again in Room using its Firebase ID and Owner ID
+                        MessageEntity sentMessage = messageDao.getMessageByFirebaseId(messagePushId, messageSenderID);
+                        if (sentMessage != null) {
+                            sentMessage.setStatus("sent"); // Update status to 'sent'
+                            messageDao.insertMessage(sentMessage); // Use REPLACE strategy to update the existing entry
+                            Log.d(TAG, "Updated status to 'sent' in Room for owner " + messageSenderID + " for drawing link message: " + messagePushId);
+                        } else {
+                            // This shouldn't happen if the initial insert succeeded, but log it if it does.
+                            Log.e(TAG, "Sent drawing link message " + messagePushId + " not found in Room after Firebase success. Cannot update status.");
+                        }
+                    });
+
+
+                    // --- 6. Launch the Drawing Activity (ON MAIN THREAD) ---
+                    // Launch the drawing activity after the message has been successfully sent to Firebase.
+                    Log.d(TAG, "Firebase write successful. Launching drawing activity on Main Thread.");
+                    runOnUiThread(() -> { // Ensure UI operations run on the main thread
+                        try {
+                            // Create an Intent for your drawing activity class
+                            Intent drawingIntent = new Intent(ChatPageActivity.this, YOUR_DRAWING_ACTIVITY_CLASS.class); // <<< Replace with your actual drawing activity class name
+                            // Pass the necessary IDs as extras
+                            drawingIntent.putExtra("conversationId", conversationId); // Pass the conversation ID
+                            drawingIntent.putExtra("sessionId", sessionId);     // Pass the session ID
+                            // Do NOT pass groupId for 1:1 sessions. The drawing activity will check for conversationId.
+
+                            // Start the activity
+                            startActivity(drawingIntent);
+
+                            // Optional: Add an activity transition animation if you have one defined
+                            // overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left);
+
+                        } catch (Exception e) {
+                            Log.e(TAG, "Error launching drawing activity after successful Firebase write.", e);
+                            // Show an error toast if launching the activity fails
+                            Toast.makeText(ChatPageActivity.this, "Error launching drawing activity.", Toast.LENGTH_SHORT).show();
+                        }
+                    });
+
+
+                } else {
+                    // Firebase write failed. Update status in Room to "failed".
+                    Log.e(TAG, "Firebase setValue failed for drawing session link message " + messagePushId, task.getException());
+                    // Update the local message status in Room to 'failed'.
+                    databaseWriteExecutor.execute(() -> { // Execute on the background thread
+                        // Find the message again in Room
+                        MessageEntity failedMessage = messageDao.getMessageByFirebaseId(messagePushId, messageSenderID);
+                        if (failedMessage != null) {
+                            failedMessage.setStatus("failed"); // Update status to 'failed'
+                            messageDao.insertMessage(failedMessage); // Use REPLACE strategy to update the existing entry
+                            Log.d(TAG, "Updated status to 'failed' in Room for owner " + messageSenderID + " for drawing link message: " + messagePushId);
+                        } else {
+                            Log.e(TAG, "Failed drawing link message " + messagePushId + " not found in Room after Firebase failure. Cannot update status.");
+                        }
+                    });
+                    // Show a failure toast on the main thread
+                    runOnUiThread(() -> Toast.makeText(ChatPageActivity.this, "Failed to send drawing link message.", Toast.LENGTH_SHORT).show());
+                }
+            }); // End of Firebase setValue addOnCompleteListener
+        }); // End of outer databaseWriteExecutor (Room insert and Firebase send)
+    }
+// --- END Full Modified Method sendOneToOneDrawingSessionLinkAndLaunchActivity ---
+
+// ... rest of ChatPageActivity methods ...
+    // ... (Keep the rest of your ChatPageActivity methods) ...
 
 } // End of ChatPageActivity class

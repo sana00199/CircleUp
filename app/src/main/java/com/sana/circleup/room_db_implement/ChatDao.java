@@ -16,6 +16,10 @@ public interface ChatDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     void insertOrUpdateChat(ChatEntity chat);
 
+    // Query to get the sum of unread messages for chats owned by a user
+    @Query("SELECT SUM(unreadCount) FROM chat_list_table WHERE ownerUserId = :ownerUserId")
+    int getTotalUnreadMessageCount(String ownerUserId); // Returns 0 if no rows or sum is null
+
     /**
      * Gets all chat list entries from the 'chat_list_table' that are owned by a specific logged-in user.
      * The results are ordered by timestamp (latest message timestamp) in descending order (latest first).

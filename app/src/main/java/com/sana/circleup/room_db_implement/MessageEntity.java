@@ -1,5 +1,6 @@
 package com.sana.circleup.room_db_implement; // Adjust package name if needed
 
+import androidx.room.ColumnInfo;
 import androidx.room.Entity;
 import androidx.room.PrimaryKey;
 import androidx.annotation.NonNull; // Import NonNull
@@ -151,6 +152,8 @@ public class MessageEntity {
     @NonNull
     private String ownerUserId;
 
+    @Nullable // Display name might not always be available
+    private String name;
     @Nullable private String message; // Encrypted content or plaintext will be stored here
     @Nullable private String type;
     @NonNull private String from;
@@ -162,11 +165,24 @@ public class MessageEntity {
     @Nullable private String status; // e.g., "pending", "sent", "failed", "received"
     private long timestamp;
 
+
+    // --- NEW FIELD FOR INVISIBLE INK ---
+    // Stores how the message should be displayed (e.g., "normal", "invisible_ink")
+   // Default value when receiving a new message
     // --- NEW FIELD FOR SCHEDULED MESSAGES ---
     // This field will store the original scheduled time string (if applicable)
     // Its presence indicates this message was sent via the scheduler.
     @Nullable private String scheduledTime;
     // --- END NEW FIELD ---
+
+    // *** NEW FIELDS FOR INVISIBLE INK ***
+    @ColumnInfo(name = "display_effect")
+    private String displayEffect = "none"; // Default to "none" for normal messages
+
+    @ColumnInfo(name = "is_revealed")
+    private boolean isRevealed = false;
+    private String conversationId;
+    private String drawingSessionId;
 
 
     // --- Public no-argument constructor for Room ---
@@ -225,5 +241,64 @@ public class MessageEntity {
     public void setScheduledTime(@Nullable String scheduledTime) {
         this.scheduledTime = scheduledTime;
     }
+
+    // *** GETTERS AND SETTERS FOR NEW FIELDS ***
+    public String getDisplayEffect() { return displayEffect; }
+    public void setDisplayEffect(String displayEffect) { this.displayEffect = displayEffect; }
+
+    public boolean isRevealed() { return isRevealed; }
+    public void setRevealed(boolean revealed) { isRevealed = revealed; }
+    // *** END GETTERS AND SETTERS ***
+
+
+
+    // Optional: Override toString() for logging
+    @NonNull
+    @Override
+    public String toString() {
+        return "MessageEntity{" +
+                ", firebaseMessageId='" + firebaseMessageId + '\'' +
+                ", ownerUserId='" + ownerUserId + '\'' +
+                ", message='" + (message != null && message.length() > 20 ? message.substring(0, 20) + "..." : message) + '\'' + // Truncate message for log
+                ", type='" + type + '\'' +
+                ", from='" + from + '\'' +
+                ", to='" + to + '\'' +
+                ", sendTime='" + sendTime + '\'' +
+                ", seenTime='" + seenTime + '\'' +
+                ", status='" + status + '\'' +
+                ", timestamp=" + timestamp +
+                ", scheduledTime='" + scheduledTime + '\'' +
+                ", displayEffect='" + displayEffect + '\'' + // Include new field
+                ", isRevealed=" + isRevealed + // Include new field
+                '}';
+    }
+
+
+    public String getConversationId() {
+        return conversationId;
+    }
+
+    public void setConversationId(String conversationId) {
+        this.conversationId = conversationId;
+    }
+
+    public String getDrawingSessionId() {
+        return drawingSessionId;
+    }
+
+    public void setDrawingSessionId(String drawingSessionId) {
+        this.drawingSessionId = drawingSessionId;
+    }
+
+
+    @Nullable
+    public String getName() {
+        return name; // <<< ADD THIS GETTER
+    }
+
+    public void setName(@Nullable String name) {
+        this.name = name; // <<< ADD THIS SETTER
+    }
+
     // --- END Getter and Setter for scheduledTime ---
 }

@@ -55,6 +55,9 @@ public interface GroupMessageDao {
 
     @Query("SELECT DISTINCT groupId FROM group_messages ORDER BY timestamp DESC") // Assuming 'group_messages' is your table name and 'timestamp' exists
     LiveData<List<String>> getGroupsWithMessages();
+
+    @Query("SELECT messageId FROM group_messages WHERE groupId = :groupId")
+    List<String> getMessageIdsForGroup(String groupId);
     // --- END NEW ---
 
 

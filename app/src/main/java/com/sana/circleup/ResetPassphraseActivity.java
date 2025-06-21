@@ -239,7 +239,7 @@ public class ResetPassphraseActivity extends AppCompatActivity {
     private void initializeViews() {
         resetWarningTitle = findViewById(R.id.reset_warning_title);
         resetWarningMessage = findViewById(R.id.reset_warning_message);
-        resetWarningConfirm = findViewById(R.id.reset_warning_confirm);
+
         identityVerificationTitle = findViewById(R.id.identity_verification_title);
         identityVerificationMessage = findViewById(R.id.identity_verification_message);
         editTextVerifyEmail = findViewById(R.id.editTextVerifyEmail);

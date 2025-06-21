@@ -1,5 +1,6 @@
 package com.sana.circleup.room_db_implement;
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.room.Entity;
 import androidx.room.PrimaryKey;
 import androidx.room.ColumnInfo; // Added
@@ -20,6 +21,8 @@ public class ChatEntity {
     @NonNull // Assuming ownerUserId cannot be null
     private String ownerUserId; // <-- Keep this field
 
+    private String firebaseMessageId;
+
     // --- Chat Partner Information ---
     // The ID of the other user in this 1-on-1 chat
     @ColumnInfo(name = "userId")
@@ -38,6 +41,8 @@ public class ChatEntity {
     @ColumnInfo(name = "conversationId")
     @NonNull // Assuming conversationId cannot be null
     private String conversationId; // <-- Keep this field
+    @Nullable
+    private String lastMessageSenderId;
 
 
     // --- Last Message Information (for chat preview) ---
@@ -159,6 +164,25 @@ public class ChatEntity {
 
     public String getMessageType() {
         return lastMessageType;
+    }
+
+    public String getFirebaseMessageId() {
+        return firebaseMessageId;
+
+    }
+
+    public void setFirebaseMessageId(String firebaseMessageId) {
+        this.firebaseMessageId = firebaseMessageId;
+    }
+
+    // --- ADD GETTER AND SETTER FOR NEW FIELD ---
+    @Nullable
+    public String getLastMessageSenderId() {
+        return lastMessageSenderId;
+    }
+
+    public void setLastMessageSenderId(@Nullable String lastMessageSenderId) {
+        this.lastMessageSenderId = lastMessageSenderId;
     }
 
     // Add getter/setter for lastMessageSenderId if you add the field

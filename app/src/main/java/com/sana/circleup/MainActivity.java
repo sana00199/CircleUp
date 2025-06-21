@@ -36,6 +36,7 @@ import androidx.fragment.app.FragmentTransaction;
 
 import com.google.android.gms.auth.api.signin.GoogleSignIn;
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions;
+import com.google.android.material.badge.BadgeDrawable;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.android.material.navigation.NavigationView;
 import com.google.firebase.auth.FirebaseAuth;
@@ -59,6 +60,7 @@ import com.sana.circleup.room_db_implement.ChatDao;
 import com.sana.circleup.room_db_implement.ChatDatabase;
 import com.sana.circleup.room_db_implement.ConversationKeyDao;
 import com.sana.circleup.room_db_implement.ConversationKeyEntity;
+import com.sana.circleup.room_db_implement.GroupListDao;
 import com.sana.circleup.temporary_chat_room.TemporaryChatRoomMain;
 
 import java.security.InvalidAlgorithmParameterException;
@@ -113,6 +115,36 @@ public class MainActivity extends AppCompatActivity {
 
 
 
+    // Firebase Listeners for Badge Counts
+    private ValueEventListener chatGroupBadgeListener; // Listener for total unread from /Chat Summaries
+    private ValueEventListener requestBadgeListener; // Listener for "received" requests from /Chat Requests
+
+    // Variables to hold current unread counts
+    private int unreadChatGroupCountForBadge = 0; // Total unread count from /Chat Summaries
+    private int pendingRequestCountForBadge = 0;
+
+    private ValueEventListener groupsBadgeListener;
+    private ValueEventListener tempRoomsBadgeListener;
+
+
+    // Variables to hold current unread counts for each type
+    private int unreadPrivateChatCountForBadge = 0; // From /Chat Summaries (already exists, holds total messages)
+    private int unreadGroupCountForBadge = 0; // New: Count of groups with unread messages for this user
+    private int unreadTemporaryRoomCountForBadge = 0; // New: Count of temporary rooms with unread messages for this user
+
+    // For the Requests tab (already exists)
+// Variables to hold current unread counts for each type
+
+    // In MainActivity
+
+
+    private GroupListDao groupListDao; // <-- NEW: Declare GroupListDao member
+// In MainActivity's onCreate:
+
+
+
+
+
     // Key to save/restore the tag of the active fragment
     private static final String ACTIVE_FRAGMENT_TAG = "active_fragment_tag";
 
@@ -139,6 +171,7 @@ public class MainActivity extends AppCompatActivity {
         ChatDatabase db = ChatDatabase.getInstance(this); // Get DB instance
         conversationKeyDao = db.conversationKeyDao(); // Get DAO
         chatDao = db.chatDao(); // <-- NEW: Initialize ChatDao member
+        groupListDao = db.groupListDao(); // <-- NEW: Initialize GroupListDao member
 
 
         drawerLayout = findViewById(R.id.drawerlayout);
@@ -255,6 +288,14 @@ public class MainActivity extends AppCompatActivity {
             Log.d(TAG, "onStart: Firebase user authenticated. UID: " + currentUserID);
 
 
+            loadUnreadCountsFromRoom(currentUserID);
+            // *** NEW: Attach notification listeners AFTER user is authenticated ***
+            if (!TextUtils.isEmpty(currentUserID)) {
+                attachNotificationListeners(); // <-- ADD THIS CALL HERE
+            } else {
+                Log.e(TAG, "onStart: currentUserID is null, skipping notification listener attachment.");
+            }
+
 
             // *** NEW: Attach Real-time Listener for isBlocked status ***
             if (currentUserBlockedStatusRef == null && blockedStatusListener == null) { // Check if listener is not already set up
@@ -323,23 +364,51 @@ public class MainActivity extends AppCompatActivity {
 
 
 
-            if (YourKeyManager.getInstance().isPrivateKeyAvailable()) {
-                Log.d(TAG, "onStart: Private key is available in KeyManager. Proceeding with MainActivity setup.");
-                setupMainActivityUIAndProceed();
-                attachKeyChangeNotificationListener(); // <-- NEW: Attach listener if keys are available
+
+            // *** NEW KEY LOADING LOGIC START *** // NEW BLOCK
+            boolean isPrivateKeyAvailable = YourKeyManager.getInstance().isPrivateKeyAvailable(); // NEW
+
+            if (isPrivateKeyAvailable) {
+                Log.d(TAG, "onStart: Private key is already available in KeyManager."); // NEW log
+                // Private key is available (from previous activity or earlier load).
+                // Proceed with normal UI setup.
+                setupMainActivityUIAndProceed(); // (May have been existing, but now called here)
+                // Also initiate loading of all conversation keys from Room cache into KeyManager cache // NEW
+                loadAllConversationKeysFromRoom(currentUserID); // NEW Call
+
+                // Attach key change listener ONLY if keys are available // NEW
+                attachKeyChangeNotificationListener(); // NEW Call
+
             } else {
-                Log.d(TAG, "onStart: User authenticated, but private key not available. Attempting secure load.");
-                if (keyLoadProgressDialog != null && keyLoadProgressDialog.isShowing()) {
-                    keyLoadProgressDialog.dismiss();
+                Log.d(TAG, "onStart: User authenticated, but private key not available. Attempting secure load from storage."); // NEW log
+                // Private key is NOT available (likely on a cold start).
+                // Initiate the background loading process.
+                // Show progress dialog // NEW
+                if (keyLoadProgressDialog != null && !keyLoadProgressDialog.isShowing()) { // NEW check
+                    keyLoadProgressDialog.setMessage("Loading secure keys..."); // NEW message
+                    keyLoadProgressDialog.show(); // NEW show
                 }
-                attemptSecureKeyLoad(currentUserID);
-                // The listener will be attached in setupMainActivityUIAndProceed if local load succeeds.
+                attemptSecureKeyLoad(currentUserID); // NEW Call to initiate background task
+                // Note: keyChangeNotificationListener is attached in setupMainActivityUIAndProceed
+                // if the local key load succeeds.
             }
+
+
+
+//            if (YourKeyManager.getInstance().isPrivateKeyAvailable()) {
+//                Log.d(TAG, "onStart: Private key is available in KeyManager. Proceeding with MainActivity setup.");
+//                setupMainActivityUIAndProceed();
+//                attachKeyChangeNotificationListener(); // <-- NEW: Attach listener if keys are available
+//            } else {
+//                Log.d(TAG, "onStart: User authenticated, but private key not available. Attempting secure load.");
+//                if (keyLoadProgressDialog != null && keyLoadProgressDialog.isShowing()) {
+//                    keyLoadProgressDialog.dismiss();
+//                }
+//                attemptSecureKeyLoad(currentUserID);
+//                // The listener will be attached in setupMainActivityUIAndProceed if local load succeeds.
+//            }
         }
     }
-
-
-
 
 
 
@@ -600,7 +669,11 @@ public class MainActivity extends AppCompatActivity {
         }
         // *** END REMOVE LISTENER ***
 
-        removeKeyChangeNotificationListener();
+        removeKeyChangeNotificationListener(); // Keep this one
+
+        // *** NEW: Remove notification listeners for badges ***
+        removeNotificationListeners(); // <-- ADD THIS CALL HERE
+        // *** END NEW CALL ***
         // Only set offline if user was authenticated AND at least public key was available
         // Rely on YourKeyManager state, which is cleared on explicit logout/delete.
         if (isFinishing() && auth.getCurrentUser() != null && YourKeyManager.getInstance().getUserPublicKey() != null) {
@@ -759,104 +832,6 @@ public class MainActivity extends AppCompatActivity {
         }
 
 
-
-//    private void checkUserRoleAndNavigate(String userId) {
-//        Log.d(TAG, "checkUserRoleAndNavigate called for user: " + userId);
-//
-//        // --- MODIFIED CHECK: ONLY check if Firebase Auth user is null ---
-//        // The availability of Public/Private keys should NOT prevent entry to MainActivity;
-//        // it should only disable secure features within the app.
-//        FirebaseUser currentUser = auth.getCurrentUser();
-//        if (currentUser == null) {
-//            Log.e(TAG, "checkUserRoleAndNavigate: Firebase Auth user is null! This indicates a critical authentication state error. Forcing re-login.");
-//            Toast.makeText(this, "Authentication state missing. Please log in again.", Toast.LENGTH_LONG).show();
-//            // Critical error: User is not authenticated. Clear state before redirect.
-//            // Clear local keys associated with this (potentially null) user ID just in case.
-//            if (userId != null) { // Use the potentially known userId before clearing Auth state
-//                SecureKeyStorageUtil.clearAllSecureKeys(MainActivity.this, userId);
-//            } else {
-//                // If userId is somehow null here, attempt to clear symmetric key globally as a fallback
-//                SecureKeyStorageUtil.clearSymmetricKey(MainActivity.this);
-//            }
-//            YourKeyManager.getInstance().clearKeys(); // Ensure KeyManager is empty
-//            // Also clear RememberMe preference on critical authentication failure.
-//            SharedPreferences prefs = getSharedPreferences("CircleUpPrefs", MODE_PRIVATE);
-//            prefs.edit().putBoolean("RememberMe", false).apply();
-//            auth.signOut(); // Sign out from Firebase Auth
-//            sendUserToLoginActivity(); // Redirect back to Login
-//            return; // Stop execution
-//        }
-//
-//        // Proceed to fetch user data from the database to check role and basic profile existence.
-//        // If user data does not exist, that's also a critical error for an authenticated user.
-//        DatabaseReference userRef = FirebaseDatabase.getInstance().getReference("Users").child(userId);
-//
-//        userRef.get().addOnCompleteListener(task -> {
-//            // Ensure progress dialog is dismissed here, regardless of success or failure below
-//            // Use the member dialog declared in MainActivity
-//            if (keyLoadProgressDialog != null && keyLoadProgressDialog.isShowing()) {
-//                keyLoadProgressDialog.dismiss();
-//            }
-//
-//            if (task.isSuccessful() && task.getResult().exists()) {
-//                // User data exists in DB. Proceed with role check.
-//                DataSnapshot snapshot = task.getResult();
-//                String role = snapshot.child("role").getValue(String.class); // Assuming 'role' field exists
-//
-//                // Log the key state *after* successful user data load and role check for informational purposes
-//                Log.d(TAG, "User data loaded, proceeding with role check. KeyManager state: Private Available=" + YourKeyManager.getInstance().isPrivateKeyAvailable() + ", Public Key Available=" + (YourKeyManager.getInstance().getUserPublicKey() != null));
-//
-//
-//                if (role != null && !role.isEmpty()) {
-//                    Log.d(TAG, "User role found: " + role + " for UID: " + userId);
-//                    if (role.equals("admin")) {
-//                        // If admin, navigate to admin dashboard and finish MainActivity
-//                        Log.d(TAG, "User is Admin. Navigating to Admin Dashboard.");
-//                        Toast.makeText(this, "this is not admin apk", Toast.LENGTH_SHORT).show();
-////                        Intent intent = new Intent(MainActivity.this, Login.class);
-////                        intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
-////                        startActivity(intent);
-////                        finish(); // Finish MainActivity
-//                    } else { // Role is "user" or something else that is not admin
-//                        // User is a standard user. They remain in MainActivity.
-//                        // The UI is already being set up (or is complete) by setupMainActivityUIAndProceed.
-//                        // Secure features in fragments, drawer, buttons will be enabled/disabled
-//                        // based on YourKeyManager.isPrivateKeyAvailable() and hasConversationKey() checks
-//                        // throughout the app. No explicit navigation or finish() needed here.
-//                        Log.d(TAG, "User is not Admin. Staying in Main Activity. Secure features will be enabled/disabled based on key availability.");
-//                        // The LiveData observers and UI logic in fragments (like ChatFragment)
-//                        // will adapt to the current state of YourKeyManager.
-//                    }
-//                } else {
-//                    // Role is missing for an authenticated user with data - Treat as critical error.
-//                    Log.e(TAG, "User role not found or is empty for UID: " + userId + ". Treating as critical error and logging out.");
-//                    Toast.makeText(MainActivity.this, "User role data missing. Please contact support. Logging out.", Toast.LENGTH_LONG).show();
-//                    // Log out and redirect
-//                    auth.signOut();
-//                    if (userId != null) SecureKeyStorageUtil.clearAllSecureKeys(MainActivity.this, userId); // Clear local data for user
-//                    YourKeyManager.getInstance().clearKeys(); // Clear KeyManager
-//                    SharedPreferences prefs = getSharedPreferences("CircleUpPrefs", MODE_PRIVATE);
-//                    prefs.edit().putBoolean("RememberMe", false).apply();
-//                    sendUserToLoginActivity(); // Redirect to Login
-//                }
-//            } else {
-//                // User data not found in DB for an authenticated user - Treat as critical error.
-//                Log.e(TAG, "User data not found in DB for UID: " + userId + " during role check. Treating as critical error and logging out.");
-//                Toast.makeText(MainActivity.this, "User data not found! Please contact support. Logging out.", Toast.LENGTH_LONG).show();
-//                // Log out and redirect
-//                auth.signOut();
-//                if (userId != null) SecureKeyStorageUtil.clearAllSecureKeys(MainActivity.this, userId); // Clear local data for user
-//                YourKeyManager.getInstance().clearKeys(); // Clear KeyManager
-//                SharedPreferences prefs = getSharedPreferences("CircleUpPrefs", MODE_PRIVATE);
-//                prefs.edit().putBoolean("RememberMe", false).apply();
-//                sendUserToLoginActivity(); // Redirect to Login
-//            }
-//        });
-//    }
-
-
-
-// Inside MainActivity.java class:
 
 private void checkUserRoleAndNavigate(String userId) {
     Log.d(TAG, "checkUserRoleAndNavigate called in MainActivity for user: " + userId);
@@ -1133,9 +1108,10 @@ private void checkUserRoleAndNavigate(String userId) {
     private void setupBottomNavigation() {
         BottomNavigationView bottomNavigation = findViewById(R.id.bottomNavigation);
 
+        // Check if BottomNavigationView and necessary fragments are initialized
         if (bottomNavigation == null || fragmentManager == null || chatFragment == null || groupFragment == null || findFriendsFragment == null || contactsFragment == null || requestFragment == null) {
-            Log.e(TAG, "setupBottomNavigation: UI or fragments not initialized properly.");
-            // Maybe hide the bottom nav or show an error state
+            Log.e(TAG, "setupBottomNavigation: UI or fragments not initialized properly. Hiding Bottom Navigation.");
+            // Hide the bottom nav or show an error state if needed
             if (bottomNavigation != null) bottomNavigation.setVisibility(View.GONE);
             return;
         }
@@ -1148,10 +1124,11 @@ private void checkUserRoleAndNavigate(String userId) {
             String tag = null;
 
             int itemId = item.getItemId();
+            // Determine which fragment corresponds to the selected item ID
             if (itemId == R.id.bottom_chat) {
                 selectedFragment = chatFragment;
                 tag = "chat";
-            } else if (itemId == R.id.bottom_groups) {
+            } else if (itemId == R.id.bottom_groups) { // Assuming this is your Groups tab ID
                 selectedFragment = groupFragment;
                 tag = "group";
             } else if (itemId == R.id.bottom_find_friends) {
@@ -1160,84 +1137,238 @@ private void checkUserRoleAndNavigate(String userId) {
             } else if (itemId == R.id.bottom_contacts) {
                 selectedFragment = contactsFragment;
                 tag = "contacts";
-            } else if (itemId == R.id.bottom_requests) {
+            } else if (itemId == R.id.bottom_requests) { // Assuming this is your Requests tab ID
                 selectedFragment = requestFragment;
                 tag = "requests";
             } else {
-                Log.w(TAG, "Unknown bottom navigation item selected: " + item.getTitle());
-                return false; // Did not handle the click
+                Log.w(TAG, "Unknown bottom navigation item selected: " + item.getTitle() + " (ID: " + itemId + ")");
+                return false; // Indicates the event was not handled
             }
 
+            // Only perform fragment transaction if a different fragment is selected
             if (selectedFragment != null && selectedFragment != activeFragment) {
-                // Check if fragments are null before attempting transaction (shouldn't be if onCreate works)
+                // Perform safety checks before transaction
                 if (activeFragment == null || selectedFragment == null) {
-                    Log.e(TAG, "Fragment switch failed: active or selected fragment is null.");
+                    Log.e(TAG, "Fragment switch failed: active or selected fragment is null during transaction setup.");
                     Toast.makeText(this, "Error switching screen.", Toast.LENGTH_SHORT).show();
-                    return false; // Did not handle due to error
+                    return false; // Event not handled due to error
                 }
 
+                // Check if the selected fragment has already been added to the FragmentManager
                 if (selectedFragment.isAdded()) {
-                    Log.d(TAG, "Switching fragment from " + activeFragment.getClass().getSimpleName() + " to: " + selectedFragment.getClass().getSimpleName());
+                    Log.d(TAG, "Switching fragment from " + (activeFragment != null ? activeFragment.getClass().getSimpleName() : "null") + " to: " + selectedFragment.getClass().getSimpleName());
+
+                    // Begin transaction: hide the current fragment and show the selected one
                     fragmentManager.beginTransaction()
-                            .hide(activeFragment)
-                            .show(selectedFragment)
-                            .commitNow(); // Use commitNow() for synchronous switch
-                    activeFragment = selectedFragment; // Update active fragment
+                            .hide(activeFragment) // Hide the currently active fragment
+                            .show(selectedFragment) // Show the newly selected fragment
+                            .commitNow(); // Use commitNow() for synchronous fragment state update
+
+                    activeFragment = selectedFragment; // Update the tracked active fragment
+
+                    // *** REMOVE THE MANUAL BADGE REMOVAL CALLS HERE ***
+                    // The Firebase listeners are responsible for updating/removing the badge
+                    // based on the actual count in Firebase.
+                    // For example, the logic to mark messages as seen/requests as processed
+                    // should be in ChatPageActivity or RequestFragment, which updates Firebase.
+                    // The MainActivity listeners will then react and update the badge.
+
+                    // --- REMOVED ---
+                    // if (itemId == R.id.bottom_chat) {
+                    //     bottomNavigation.removeBadge(R.id.bottom_chat);
+                    //     Log.d(TAG, "Removed badge locally for Chat tab on selection.");
+                    // } else if (itemId == R.id.bottom_groups) { // Groups tab selected (ASSUMPTION)
+                    //     bottomNavigation.removeBadge(R.id.bottom_groups); // Remove badge from Groups tab
+                    //     Log.d(TAG, "Removed badge locally for Groups tab on selection.");
+                    // } else if (itemId == R.id.bottom_requests) { // Requests tab selected (ASSUMPTION)
+                    //      bottomNavigation.removeBadge(R.id.bottom_requests);
+                    //      Log.d(TAG, "Removed badge locally for Requests tab on selection.");
+                    // }
+                    // --- END REMOVED ---
+
 
                 } else {
-                    // This case should ideally not happen if fragments are added in onCreate
-                    Log.e(TAG, "Attempted to show a fragment that is not added: " + selectedFragment.getClass().getSimpleName());
+                    // This case should ideally not happen if fragments are added in onCreate using commitNow
+                    Log.e(TAG, "Attempted to show a fragment that is not added to FragmentManager: " + selectedFragment.getClass().getSimpleName());
                     Toast.makeText(this, "Error loading screen: " + item.getTitle(), Toast.LENGTH_SHORT).show();
-                    return false; // Did not handle due to error
+                    return false; // Event not handled due to error
                 }
             } else if (selectedFragment == activeFragment) {
                 Log.d(TAG, "Clicked on the currently active fragment: " + selectedFragment.getClass().getSimpleName());
-                // Optional: If the active fragment is clicked again, you might scroll to the top
-                // of a list or refresh content.
+                // Optional: If the active fragment is clicked again, you might trigger
+                // scrolling to the top of a list or refreshing content within the fragment.
+                // Do NOT remove the badge here either. The badge should only clear if
+                // the underlying count in Firebase becomes 0.
+
+                // *** REMOVE THE MANUAL BADGE REMOVAL CALLS HERE AS WELL ***
+                // --- REMOVED ---
+                // if (itemId == R.id.bottom_chat) {
+                //    bottomNavigation.removeBadge(R.id.bottom_chat);
+                //    Log.d(TAG, "Removed badge locally for Chat tab on re-click.");
+                // } else if (itemId == R.id.bottom_groups) { // Groups tab re-clicked (ASSUMPTION)
+                //    bottomNavigation.removeBadge(R.id.bottom_groups);
+                //    Log.d(TAG, "Removed badge locally for Groups tab on re-click.");
+                // } else if (itemId == R.id.bottom_requests) { // Requests tab re-clicked (ASSUMPTION)
+                //    bottomNavigation.removeBadge(R.id.bottom_requests);
+                //    Log.d(TAG, "Removed badge locally for Requests tab on re-click.");
+                // }
+                // --- END REMOVED ---
+
             }
 
-            // Return true to indicate the item selection was handled
-            return true;
+            return true; // Indicates the item selection event was handled
         });
 
-        // Set the selected item on the bottom navigation to match the *initially* or *restored* active fragment
+        // --- Set the initial selected item based on the active fragment ---
+        // This ensures the correct tab is highlighted when the Activity starts or is restored.
+        // Calling setSelectedItemId will also trigger the OnItemSelectedListener above,
+        // which will now correctly switch fragments *without* removing the badge.
         if (activeFragment != null) {
-            int initialItemId = R.id.bottom_chat; // Default
+            int initialItemId = R.id.bottom_chat; // Default assumption
 
-            if (activeFragment == groupFragment) {
-                initialItemId = R.id.bottom_groups;
-            } else if (activeFragment == findFriendsFragment) {
+            // Determine the correct menu item ID based on the currently active fragment instance
+            if (activeFragment instanceof GroupFragment) {
+                initialItemId = R.id.bottom_groups; // Assuming bottom_groups maps to GroupFragment
+            } else if (activeFragment instanceof FindFriendsFragment) {
                 initialItemId = R.id.bottom_find_friends;
-            } else if (activeFragment == contactsFragment) {
+            } else if (activeFragment instanceof MyContactsFragment) {
                 initialItemId = R.id.bottom_contacts;
-            } else if (activeFragment == requestFragment) {
+            } else if (activeFragment instanceof RequestFragment) {
                 initialItemId = R.id.bottom_requests;
-            } else if (activeFragment == chatFragment){
+            } else if (activeFragment instanceof ChatFragment){
                 initialItemId = R.id.bottom_chat;
             }
+            // Add checks for other fragment types if necessary to determine the initial tab
 
-            Log.d(TAG, "Setting initial selected Bottom Nav item based on active fragment: " + initialItemId);
-            // Setting the selected item *after* the listener is set will trigger the listener
-            // and handle the initial display correctly, ensuring only the active fragment is shown.
-            // Check if the item exists in the menu before selecting it.
+            Log.d(TAG, "Setting initial selected Bottom Nav item based on active fragment (" + activeFragment.getClass().getSimpleName() + "): " + initialItemId);
+
+            // Find the menu item by ID in the BottomNavigationView's menu
             MenuItem item = bottomNavigation.getMenu().findItem(initialItemId);
             if (item != null) {
-                item.setChecked(true); // This selects the item visually
-                // Note: setSelectedItemId(id) also triggers the listener.
-                // Using setChecked(true) might be sufficient if the fragments were correctly
-                // shown/hidden in onCreate's restoration logic.
-                // Let's stick to setSelectedItemId as it's more explicit about state sync.
-                bottomNavigation.setSelectedItemId(initialItemId); // This triggers the listener again
+                // Set the selected item visually and trigger the listener.
+                // The listener will switch fragments but NO LONGER remove the badge.
+                bottomNavigation.setSelectedItemId(initialItemId);
             } else {
-                Log.e(TAG, "setupBottomNavigation: Initial item ID " + initialItemId + " not found in menu!");
-                // Fallback to selecting chat if the determined active item is missing
-                bottomNavigation.setSelectedItemId(R.id.bottom_chat);
+                // Fallback to selecting a default item if the determined initial item ID is not found in the menu
+                Log.e(TAG, "setupBottomNavigation: Initial item ID " + initialItemId + " not found in BottomNavigationView menu! Defaulting to Chat.");
+                bottomNavigation.setSelectedItemId(R.id.bottom_chat); // Fallback to the Chat tab
             }
         } else {
-            Log.e(TAG, "setupBottomNavigation: activeFragment is null after onCreate. Defaulting to Chat.");
-            bottomNavigation.setSelectedItemId(R.id.bottom_chat);
+            // Default case if activeFragment is somehow null after onCreate Fragment setup
+            Log.e(TAG, "setupBottomNavigation: activeFragment is null after onCreate fragment setup. Defaulting to Chat tab.");
+            bottomNavigation.setSelectedItemId(R.id.bottom_chat); // Default to the Chat tab
         }
     }
+
+
+//    private void setupBottomNavigation() {
+//        BottomNavigationView bottomNavigation = findViewById(R.id.bottomNavigation);
+//
+//        if (bottomNavigation == null || fragmentManager == null || chatFragment == null || groupFragment == null || findFriendsFragment == null || contactsFragment == null || requestFragment == null) {
+//            Log.e(TAG, "setupBottomNavigation: UI or fragments not initialized properly.");
+//            // Maybe hide the bottom nav or show an error state
+//            if (bottomNavigation != null) bottomNavigation.setVisibility(View.GONE);
+//            return;
+//        }
+//        Log.d(TAG, "Setting up Bottom Navigation.");
+//
+//        // activeFragment is already determined in onCreate (either initial or restored)
+//
+//        bottomNavigation.setOnItemSelectedListener(item -> {
+//            Fragment selectedFragment = null;
+//            String tag = null;
+//
+//            int itemId = item.getItemId();
+//            if (itemId == R.id.bottom_chat) {
+//                selectedFragment = chatFragment;
+//                tag = "chat";
+//            } else if (itemId == R.id.bottom_groups) {
+//                selectedFragment = groupFragment;
+//                tag = "group";
+//            } else if (itemId == R.id.bottom_find_friends) {
+//                selectedFragment = findFriendsFragment;
+//                tag = "find_friends";
+//            } else if (itemId == R.id.bottom_contacts) {
+//                selectedFragment = contactsFragment;
+//                tag = "contacts";
+//            } else if (itemId == R.id.bottom_requests) {
+//                selectedFragment = requestFragment;
+//                tag = "requests";
+//            } else {
+//                Log.w(TAG, "Unknown bottom navigation item selected: " + item.getTitle());
+//                return false; // Did not handle the click
+//            }
+//
+//            if (selectedFragment != null && selectedFragment != activeFragment) {
+//                // Check if fragments are null before attempting transaction (shouldn't be if onCreate works)
+//                if (activeFragment == null || selectedFragment == null) {
+//                    Log.e(TAG, "Fragment switch failed: active or selected fragment is null.");
+//                    Toast.makeText(this, "Error switching screen.", Toast.LENGTH_SHORT).show();
+//                    return false; // Did not handle due to error
+//                }
+//
+//                if (selectedFragment.isAdded()) {
+//                    Log.d(TAG, "Switching fragment from " + activeFragment.getClass().getSimpleName() + " to: " + selectedFragment.getClass().getSimpleName());
+//                    fragmentManager.beginTransaction()
+//                            .hide(activeFragment)
+//                            .show(selectedFragment)
+//                            .commitNow(); // Use commitNow() for synchronous switch
+//                    activeFragment = selectedFragment; // Update active fragment
+//
+//                } else {
+//                    // This case should ideally not happen if fragments are added in onCreate
+//                    Log.e(TAG, "Attempted to show a fragment that is not added: " + selectedFragment.getClass().getSimpleName());
+//                    Toast.makeText(this, "Error loading screen: " + item.getTitle(), Toast.LENGTH_SHORT).show();
+//                    return false; // Did not handle due to error
+//                }
+//            } else if (selectedFragment == activeFragment) {
+//                Log.d(TAG, "Clicked on the currently active fragment: " + selectedFragment.getClass().getSimpleName());
+//                // Optional: If the active fragment is clicked again, you might scroll to the top
+//                // of a list or refresh content.
+//            }
+//
+//            // Return true to indicate the item selection was handled
+//            return true;
+//        });
+//
+//        // Set the selected item on the bottom navigation to match the *initially* or *restored* active fragment
+//        if (activeFragment != null) {
+//            int initialItemId = R.id.bottom_chat; // Default
+//
+//            if (activeFragment == groupFragment) {
+//                initialItemId = R.id.bottom_groups;
+//            } else if (activeFragment == findFriendsFragment) {
+//                initialItemId = R.id.bottom_find_friends;
+//            } else if (activeFragment == contactsFragment) {
+//                initialItemId = R.id.bottom_contacts;
+//            } else if (activeFragment == requestFragment) {
+//                initialItemId = R.id.bottom_requests;
+//            } else if (activeFragment == chatFragment){
+//                initialItemId = R.id.bottom_chat;
+//            }
+//
+//            Log.d(TAG, "Setting initial selected Bottom Nav item based on active fragment: " + initialItemId);
+//            // Setting the selected item *after* the listener is set will trigger the listener
+//            // and handle the initial display correctly, ensuring only the active fragment is shown.
+//            // Check if the item exists in the menu before selecting it.
+//            MenuItem item = bottomNavigation.getMenu().findItem(initialItemId);
+//            if (item != null) {
+//                item.setChecked(true); // This selects the item visually
+//                // Note: setSelectedItemId(id) also triggers the listener.
+//                // Using setChecked(true) might be sufficient if the fragments were correctly
+//                // shown/hidden in onCreate's restoration logic.
+//                // Let's stick to setSelectedItemId as it's more explicit about state sync.
+//                bottomNavigation.setSelectedItemId(initialItemId); // This triggers the listener again
+//            } else {
+//                Log.e(TAG, "setupBottomNavigation: Initial item ID " + initialItemId + " not found in menu!");
+//                // Fallback to selecting chat if the determined active item is missing
+//                bottomNavigation.setSelectedItemId(R.id.bottom_chat);
+//            }
+//        } else {
+//            Log.e(TAG, "setupBottomNavigation: activeFragment is null after onCreate. Defaulting to Chat.");
+//            bottomNavigation.setSelectedItemId(R.id.bottom_chat);
+//        }
+//    }
 
 
 
@@ -1321,11 +1452,14 @@ private void checkUserRoleAndNavigate(String userId) {
         });
     }
 
+
+
+
+
     private void removeChatRequests(String userId, ProgressDialog progressDialog, FirebaseUser user) {
         Log.d(TAG, "Removing Firebase chat requests for: " + userId);
         DatabaseReference chatRequestsRootRef = FirebaseDatabase.getInstance().getReference("Chat Requests");
 
-        // Use a transaction or batched write for requests as well
         Map<String, Object> updates = new HashMap<>();
         // Remove requests sent *by* this user
         updates.put(userId, null); // Remove the node where this user is the sender
@@ -1335,14 +1469,14 @@ private void checkUserRoleAndNavigate(String userId) {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
                 int receivedRemovedCount = 0;
-                for (DataSnapshot userRequestsSnapshot : snapshot.getChildren()) {
-                    // Check if this user is the receiver
-                    if (userRequestsSnapshot.hasChild(userId)) {
-                        updates.put(userRequestsSnapshot.getKey() + "/" + userId, null); // Remove the node where this user is the receiver
+                for (DataSnapshot senderRequestsSnapshot : snapshot.getChildren()) { // Iterate through senders
+                    // Check if this user (the one being deleted) is a receiver under this sender
+                    if (senderRequestsSnapshot.hasChild(userId)) {
+                        updates.put(senderRequestsSnapshot.getKey() + "/" + userId, null); // Remove the node where this user is the receiver
                         receivedRemovedCount++;
                     }
                 }
-                Log.d(TAG, "Firebase: Preparing to remove sent/received chat requests (" + (updates.size() -1) + " sent, " + receivedRemovedCount + " received)."); // -1 for the sent root node
+                Log.d(TAG, "Firebase: Preparing to remove sent/received chat requests (" + (updates.containsKey(userId) ? 1 : 0) + " sent node, " + receivedRemovedCount + " received requests).");
 
                 chatRequestsRootRef.updateChildren(updates)
                         .addOnCompleteListener(requestRemovalTask -> {
@@ -1350,21 +1484,68 @@ private void checkUserRoleAndNavigate(String userId) {
                                 Log.d(TAG, "Firebase: Successfully removed chat requests.");
                             } else {
                                 Log.w(TAG, "Firebase: Failed to remove all chat requests.", requestRemovalTask.getException());
-                                Toast.makeText(MainActivity.this, "Warning: Failed to clean up chat requests fully.", Toast.LENGTH_SHORT).show();
+                                // Avoid toast here
                             }
                             // Continue to next step regardless of success
-                            removeUserMainData(userId, progressDialog, user);
+                            // Add cleanup for Chat Summaries related to this user
+                            removeChatSummariesData(userId, progressDialog, user); // *** CHANGE THIS CALL ***
                         });
             }
 
             @Override
             public void onCancelled(@NonNull DatabaseError error) {
                 Log.e(TAG, "Firebase: Failed to fetch Chat Requests for removal", error.toException());
-                Toast.makeText(MainActivity.this, "Warning: Failed to fetch chat requests for cleanup.", Toast.LENGTH_SHORT).show();
-                removeUserMainData(userId, progressDialog, user); // Continue on error
+                // Avoid toast here
+                // Add cleanup for Chat Summaries even on error
+                removeChatSummariesData(userId, progressDialog, user); // *** CHANGE THIS CALL ***
             }
         });
     }
+
+//    private void removeChatRequests(String userId, ProgressDialog progressDialog, FirebaseUser user) {
+//        Log.d(TAG, "Removing Firebase chat requests for: " + userId);
+//        DatabaseReference chatRequestsRootRef = FirebaseDatabase.getInstance().getReference("Chat Requests");
+//
+//        // Use a transaction or batched write for requests as well
+//        Map<String, Object> updates = new HashMap<>();
+//        // Remove requests sent *by* this user
+//        updates.put(userId, null); // Remove the node where this user is the sender
+//
+//        // Find and remove requests sent *to* this user
+//        chatRequestsRootRef.addListenerForSingleValueEvent(new ValueEventListener() {
+//            @Override
+//            public void onDataChange(@NonNull DataSnapshot snapshot) {
+//                int receivedRemovedCount = 0;
+//                for (DataSnapshot userRequestsSnapshot : snapshot.getChildren()) {
+//                    // Check if this user is the receiver
+//                    if (userRequestsSnapshot.hasChild(userId)) {
+//                        updates.put(userRequestsSnapshot.getKey() + "/" + userId, null); // Remove the node where this user is the receiver
+//                        receivedRemovedCount++;
+//                    }
+//                }
+//                Log.d(TAG, "Firebase: Preparing to remove sent/received chat requests (" + (updates.size() -1) + " sent, " + receivedRemovedCount + " received)."); // -1 for the sent root node
+//
+//                chatRequestsRootRef.updateChildren(updates)
+//                        .addOnCompleteListener(requestRemovalTask -> {
+//                            if (requestRemovalTask.isSuccessful()) {
+//                                Log.d(TAG, "Firebase: Successfully removed chat requests.");
+//                            } else {
+//                                Log.w(TAG, "Firebase: Failed to remove all chat requests.", requestRemovalTask.getException());
+//                                Toast.makeText(MainActivity.this, "Warning: Failed to clean up chat requests fully.", Toast.LENGTH_SHORT).show();
+//                            }
+//                            // Continue to next step regardless of success
+//                            removeUserMainData(userId, progressDialog, user);
+//                        });
+//            }
+//
+//            @Override
+//            public void onCancelled(@NonNull DatabaseError error) {
+//                Log.e(TAG, "Firebase: Failed to fetch Chat Requests for removal", error.toException());
+//                Toast.makeText(MainActivity.this, "Warning: Failed to fetch chat requests for cleanup.", Toast.LENGTH_SHORT).show();
+//                removeUserMainData(userId, progressDialog, user); // Continue on error
+//            }
+//        });
+//    }
 
     private void removeUserMainData(String userId, ProgressDialog progressDialog, FirebaseUser user) {
         Log.d(TAG, "Removing main Firebase user data for: " + userId);
@@ -1391,15 +1572,6 @@ private void checkUserRoleAndNavigate(String userId) {
         });
     }
 
-
-    // --- Modified LoggingOut method ---
-    // Inside MainActivity.java
-
-    // --- Modified LoggingOut method ---
-    // Inside MainActivity.java
-
-    // In MainActivity.java, locate the LoggingOut() method.
-// Modify the databaseWriteExecutor.execute block inside it:
 
     private void LoggingOut() {
         new AlertDialog.Builder(this)
@@ -1633,8 +1805,36 @@ private void checkUserRoleAndNavigate(String userId) {
             }
         });
 
-        FirebaseAuth.getInstance().getCurrentUser().delete();
+        // FirebaseAuth.getInstance().getCurrentUser().delete(); // <<< REMOVE THIS DUPLICATE LINE
     }
+
+
+//    private void deleteFirebaseUser(FirebaseUser user, ProgressDialog progressDialog) {
+//        Log.d(TAG, "Deleting Firebase Auth user: " + user.getUid());
+//        user.delete().addOnCompleteListener(deleteTask -> {
+//            progressDialog.dismiss();
+//            if (deleteTask.isSuccessful()) {
+//                Log.d(TAG, "Firebase Auth user deleted successfully.");
+//                Toast.makeText(MainActivity.this, "Account deleted successfully", Toast.LENGTH_LONG).show();
+//                // Also sign out from Google if applicable
+//                GoogleSignIn.getClient(MainActivity.this, GoogleSignInOptions.DEFAULT_SIGN_IN).signOut()
+//                        .addOnCompleteListener(googleTask -> {
+//                            Log.d(TAG, "Google SignOut completed after account deletion.");
+//                            sendUserToLoginActivity(); // Redirect after successful deletion/sign-out
+//                        })
+//                        .addOnFailureListener(googleTask -> {
+//                            Log.e(TAG, "Google SignOut failed after account deletion.", googleTask.getCause());
+//                            sendUserToLoginActivity(); // Redirect even if Google sign out fails
+//                        });
+//            } else {
+//                Log.e(TAG, "Failed to delete Firebase Auth user. Requires re-authentication?", deleteTask.getException());
+//                Toast.makeText(MainActivity.this, "Failed to delete account from Firebase Auth. Please try logging in again and delete.", Toast.LENGTH_LONG).show();
+//                sendUserToLoginActivity(); // Redirect on Firebase Auth deletion failure
+//            }
+//        });
+//
+//        FirebaseAuth.getInstance().getCurrentUser().delete();
+//    }
 
 
     private void updateUserState(String state) {
@@ -1930,6 +2130,503 @@ private void checkUserRoleAndNavigate(String userId) {
     }
     // ... (Rest of the MainActivity.java class remains the same) ...
 
+
+
+// ... (Keep your existing methods) ...
+
+    // Helper method to update a specific badge on the BottomNavigationView
+    private void updateBadge(int itemId, int count) {
+        // Ensure BottomNavigationView is initialized and has items
+        BottomNavigationView bottomNavigation = findViewById(R.id.bottomNavigation);
+        if (bottomNavigation == null || bottomNavigation.getMenu().findItem(itemId) == null) {
+            // Log.w(TAG, "updateBadge: BottomNavigationView or menu item " + itemId + " not found."); // Use w for warning
+            return; // Silently return if view/item is not ready
+        }
+
+        // Run on the UI thread
+        runOnUiThread(() -> {
+            if (count > 0) {
+                // Show badge with count
+                BadgeDrawable badgeDrawable = bottomNavigation.getOrCreateBadge(itemId);
+                badgeDrawable.setNumber(count);
+                badgeDrawable.setVisible(true);
+
+                // Optional: Customize badge appearance if needed (color, size, etc.)
+                // badgeDrawable.setBackgroundColor(ContextCompat.getColor(this, R.color.red));
+                Log.d(TAG, "Badge updated for item " + getResources().getResourceEntryName(itemId) + " with count: " + count);
+            } else {
+                // Hide/Remove badge if count is 0 or less
+                bottomNavigation.removeBadge(itemId);
+                Log.d(TAG, "Badge removed for item " + getResources().getResourceEntryName(itemId) + " (count is 0).");
+            }
+        });
+    }
+
+
+
+    // --- NEW: Implement notification badge listeners ---
+
+    // Method to attach all Firebase listeners for notification badges
+    private void attachNotificationListeners() {
+        // Ensure RootRef and currentUserID are available
+        if (RootRef == null || auth.getCurrentUser() == null) {
+            Log.w(TAG, "attachNotificationListeners: RootRef or Firebase User is null. Cannot attach listeners.");
+            return;
+        }
+        String currentUserID = auth.getCurrentUser().getUid();
+        if (TextUtils.isEmpty(currentUserID)) {
+            Log.w(TAG, "attachNotificationListeners: currentUserID is empty after getting from Auth. Cannot attach listeners.");
+            return;
+        }
+        Log.d(TAG, "Attaching notification listeners for user: " + currentUserID);
+
+        // --- Listener for Total Unread Private Chats (from Chat Summaries/{currentUserID}) ---
+        // Keep this block, but modify to call updatePrivateChatBadge()
+        if (chatGroupBadgeListener == null) {
+            DatabaseReference currentUserSummariesRef = RootRef.child("ChatSummaries").child(currentUserID); // Correct path
+
+            chatGroupBadgeListener = currentUserSummariesRef.addValueEventListener(new ValueEventListener() {
+                @Override
+                public void onDataChange(@NonNull DataSnapshot snapshot) {
+                    Log.d(TAG, "Chat/Group (Private) Badge Listener: onDataChange triggered for user summaries node. Snapshot has " + snapshot.getChildrenCount() + " children (partner summaries).");
+                    int currentPrivateUnreadCount = 0; // Calculate count for this listener's type
+                    String userId = FirebaseAuth.getInstance().getCurrentUser() != null ? FirebaseAuth.getInstance().getCurrentUser().getUid() : null;
+
+                    if (!TextUtils.isEmpty(userId) && snapshot.exists()) {
+                        for (DataSnapshot partnerSummarySnapshot : snapshot.getChildren()) {
+                            Integer unreadCount = null;
+                            if (partnerSummarySnapshot.hasChild("unreadCounts") && partnerSummarySnapshot.child("unreadCounts").hasChild(userId)) {
+                                unreadCount = partnerSummarySnapshot.child("unreadCounts").child(userId).getValue(Integer.class);
+                            }
+
+                            if (unreadCount != null && unreadCount > 0) {
+                                currentPrivateUnreadCount ++; // Summing messages for private chats
+                            }
+                        }
+                    } else if (TextUtils.isEmpty(userId)) {
+                        Log.e(TAG, "Chat/Group (Private) Badge Listener: User ID is null. Cannot calculate unread.");
+                    } else {
+                        Log.d(TAG, "Chat/Group (Private) Badge Listener: No chat summaries found.");
+                    }
+
+                    // Update the private chat count state variable
+                    unreadPrivateChatCountForBadge = currentPrivateUnreadCount;
+                    Log.d(TAG, "Chat/Group (Private) Badge Listener: Calculated total unread messages: " + unreadPrivateChatCountForBadge);
+
+                    // *** Call the method to update the Private Chat badge ***
+                    updatePrivateChatBadge();
+                }
+
+                @Override
+                public void onCancelled(@NonNull DatabaseError error) {
+                    Log.e(TAG, "Chat/Group (Private) Badge Listener: Cancelled.", error.toException());
+                    // On error, reset this specific count to 0 and update the badge
+                    unreadPrivateChatCountForBadge = 0;
+                    updatePrivateChatBadge(); // Update private chat badge
+                }
+            });
+            Log.d(TAG, "Chat/Group (Private) Badge Listener attached to /Chat Summaries/" + currentUserID);
+        }
+
+        // --- Listener for Unread Groups (from /Groups) ---
+        // NEW BLOCK
+        if (groupsBadgeListener == null) {
+            DatabaseReference groupsRootRef = RootRef.child("Groups");
+
+            groupsBadgeListener = groupsRootRef.addValueEventListener(new ValueEventListener() {
+                @Override
+                public void onDataChange(@NonNull DataSnapshot snapshot) {
+                    Log.d(TAG, "Groups Badge Listener: onDataChange triggered. Snapshot has " + snapshot.getChildrenCount() + " children (groups).");
+                    int unreadGroupCount = 0; // Calculate count for this listener's type
+                    String userId = FirebaseAuth.getInstance().getCurrentUser() != null ? FirebaseAuth.getInstance().getCurrentUser().getUid() : null;
+
+                    if (!TextUtils.isEmpty(userId) && snapshot.exists()) {
+                        for (DataSnapshot groupSnapshot : snapshot.getChildren()) {
+                            boolean isMember = groupSnapshot.child("members").hasChild(userId);
+
+                            if (isMember) {
+                                boolean groupHasUnread = false;
+                                DataSnapshot messagesSnapshot = groupSnapshot.child("Messages"); // Assuming Group messages are under /Groups/{groupId}/Messages
+
+                                if (messagesSnapshot.exists() && messagesSnapshot.hasChildren()) {
+                                    for (DataSnapshot messageSnap : messagesSnapshot.getChildren()) {
+                                        DataSnapshot readBySnapshot = messageSnap.child("readBy");
+                                        // Message is unread for this user if 'readBy/userId' is missing or false
+                                        // Note: Checking for boolean FALSE is important if you explicitly set false initially
+                                        Object readStatus = readBySnapshot.child(userId).getValue();
+                                        if (readStatus == null || (readStatus instanceof Boolean && !(Boolean)readStatus)) {
+                                            groupHasUnread = true;
+                                            break; // Found at least one unread message, the group is unread
+                                        }
+                                    }
+                                }
+                                // Check if group has any unread messages for this user
+                                if (groupHasUnread) {
+                                    unreadGroupCount++; // Count this group as unread
+                                }
+                            }
+                        }
+                    } else if (TextUtils.isEmpty(userId)) {
+                        Log.e(TAG, "Groups Badge Listener: User ID is null. Cannot calculate unread.");
+                    } else {
+                        Log.d(TAG, "Groups Badge Listener: No groups found.");
+                    }
+
+                    // Update the group count state variable
+                    unreadGroupCountForBadge = unreadGroupCount;
+                    Log.d(TAG, "Groups Badge Listener: Calculated unread groups count: " + unreadGroupCountForBadge);
+
+                    // *** Call the method to update the Groups Tab badge ***
+                    updateGroupsTabBadge();
+                }
+
+                @Override
+                public void onCancelled(@NonNull DatabaseError error) {
+                    Log.e(TAG, "Groups Badge Listener: Cancelled.", error.toException());
+                    // On error, reset this specific count to 0 and update the total badge
+                    unreadGroupCountForBadge = 0;
+                    updateGroupsTabBadge(); // Update Groups tab badge
+                }
+            });
+            Log.d(TAG, "Groups Badge Listener attached to /Groups.");
+        }
+
+
+        // --- Listener for Unread Temporary Rooms (from /temporaryChatRooms) ---
+        // NEW BLOCK
+        if (tempRoomsBadgeListener == null) {
+            DatabaseReference tempRoomsRootRef = RootRef.child("temporaryChatRooms"); // Assuming this is the path
+
+            tempRoomsBadgeListener = tempRoomsRootRef.addValueEventListener(new ValueEventListener() {
+                @Override
+                public void onDataChange(@NonNull DataSnapshot snapshot) {
+                    Log.d(TAG, "Temporary Rooms Badge Listener: onDataChange triggered. Snapshot has " + snapshot.getChildrenCount() + " children (rooms).");
+                    int unreadTemporaryRoomCount = 0; // Calculate count for this listener's type
+                    String userId = FirebaseAuth.getInstance().getCurrentUser() != null ? FirebaseAuth.getInstance().getCurrentUser().getUid() : null;
+                    long currentTime = System.currentTimeMillis(); // Get current time once
+
+                    if (!TextUtils.isEmpty(userId) && snapshot.exists()) {
+                        for (DataSnapshot roomSnapshot : snapshot.getChildren()) {
+                            boolean isMember = roomSnapshot.child("members").hasChild(userId);
+                            Long expiryTimeMillis = roomSnapshot.child("expiryTime").getValue(Long.class);
+                            // Check if room is NOT expired
+                            boolean isNotExpired = (expiryTimeMillis == null || currentTime <= expiryTimeMillis);
+
+
+                            if (isMember && isNotExpired) { // Only count if member and not expired
+                                boolean roomHasUnread = false;
+                                DataSnapshot messagesSnapshot = roomSnapshot.child("messages"); // Assuming Room messages are under /temporaryChatRooms/{roomId}/messages
+
+                                if (messagesSnapshot.exists() && messagesSnapshot.hasChildren()) {
+                                    for (DataSnapshot messageSnap : messagesSnapshot.getChildren()) {
+                                        DataSnapshot readBySnapshot = messageSnap.child("readBy");
+                                        // Message is unread for this user if 'readBy/userId' is missing or false
+                                        Object readStatus = readBySnapshot.child(userId).getValue();
+                                        if (readStatus == null || (readStatus instanceof Boolean && !(Boolean)readStatus)) {
+                                            roomHasUnread = true;
+                                            break; // Found at least one unread message, the room is unread
+                                        }
+                                    }
+                                }
+                                // Check if room has any unread messages for this user
+                                if (roomHasUnread) {
+                                    unreadTemporaryRoomCount++; // Count this room as unread
+                                }
+                            }
+                        }
+                    } else if (TextUtils.isEmpty(userId)) {
+                        Log.e(TAG, "Temporary Rooms Badge Listener: User ID is null. Cannot calculate unread.");
+                    } else {
+                        Log.d(TAG, "Temporary Rooms Badge Listener: No temporary rooms found.");
+                    }
+
+                    // Update the temporary room count state variable
+                    unreadTemporaryRoomCountForBadge = unreadTemporaryRoomCount;
+                    Log.d(TAG, "Temporary Rooms Badge Listener: Calculated unread rooms count: " + unreadTemporaryRoomCountForBadge);
+
+
+                    // *** Call the method to update the Groups Tab badge ***
+                    updateGroupsTabBadge();
+                }
+
+                @Override
+                public void onCancelled(@NonNull DatabaseError error) {
+                    Log.e(TAG, "Temporary Rooms Badge Listener: Cancelled.", error.toException());
+                    // On error, reset this specific count to 0 and update the total badge
+                    unreadTemporaryRoomCountForBadge = 0;
+                    updateGroupsTabBadge(); // Update Groups tab badge
+                }
+            });
+            Log.d(TAG, "Temporary Rooms Badge Listener attached to /temporaryChatRooms.");
+        }
+
+
+        // --- Listener for Pending Requests (from Chat Requests) ---
+        // Keep this block as is, it updates the separate Requests tab badge.
+        if (requestBadgeListener == null) {
+            DatabaseReference chatRequestsRootRef = RootRef.child("Chat Requests");
+
+            requestBadgeListener = chatRequestsRootRef.addValueEventListener(new ValueEventListener() {
+                @Override
+                public void onDataChange(@NonNull DataSnapshot snapshot) {
+                    Log.d(TAG, "Request Badge Listener: onDataChange triggered. Snapshot has " + snapshot.getChildrenCount() + " children (potential senders).");
+                    int receivedRequestCount = 0;
+                    String userId = FirebaseAuth.getInstance().getCurrentUser() != null ? FirebaseAuth.getInstance().getCurrentUser().getUid() : null;
+
+                    if (!TextUtils.isEmpty(userId) && snapshot.exists()) {
+                        for (DataSnapshot senderSnapshot : snapshot.getChildren()) {
+                            String senderId = senderSnapshot.getKey();
+                            if (senderSnapshot.hasChild(userId)) {
+                                DataSnapshot receiverSnapshot = senderSnapshot.child(userId);
+                                String requestType = receiverSnapshot.child("request_type").getValue(String.class);
+                                if ("sent".equals(requestType)) { // Correctly counting requests sent TO this user (as receiver)
+                                    receivedRequestCount++;
+                                }
+                            }
+                        }
+                    } else if (TextUtils.isEmpty(userId)) {
+                        Log.e(TAG, "Request Badge Listener: User ID is null. Cannot calculate requests.");
+                    } else {
+                        Log.d(TAG, "Request Badge Listener: No top-level request nodes found.");
+                    }
+                    pendingRequestCountForBadge = receivedRequestCount;
+                    Log.d(TAG, "Request Badge Listener: Total received requests count: " + pendingRequestCountForBadge);
+                    // Update the badge for the REQUESTS tab (assuming this is R.id.bottom_requests)
+                    updateBadge(R.id.bottom_requests, pendingRequestCountForBadge);
+                }
+
+                @Override
+                public void onCancelled(@NonNull DatabaseError error) {
+                    Log.e(TAG, "Request Badge Listener: Cancelled.", error.toException());
+                    // On error, clear the badge for Requests tab
+                    updateBadge(R.id.bottom_requests, 0);
+                }
+            });
+            Log.d(TAG, "Request Badge Listener attached to /Chat Requests.");
+        }
+    }
+
+    // ... (Keep the rest of MainActivity.java)
+
+
+    // ... (Keep your existing methods, including attachNotificationListeners) ...
+
+    // Method to remove all Firebase listeners for notification badges
+    private void removeNotificationListeners() {
+        Log.d(TAG, "Removing notification listeners.");
+        // No need to get currentUserID here as listeners are removed from root paths
+
+        if (RootRef != null) {
+            // Remove Chat/Group listener from /Chat Summaries
+            if (chatGroupBadgeListener != null) {
+                // The listener is on the root "Chat Summaries" node
+                RootRef.child("Chat Summaries").removeEventListener(chatGroupBadgeListener);
+                chatGroupBadgeListener = null;
+                Log.d(TAG, "Chat/Group Badge Listener removed from /Chat Summaries.");
+            }
+
+            // Remove Request listener from /Chat Requests
+            // The listener is on the root "Chat Requests" node
+            if (requestBadgeListener != null) {
+                RootRef.child("Chat Requests").removeEventListener(requestBadgeListener); // Removed from the root
+                requestBadgeListener = null;
+                Log.d(TAG, "Request Badge Listener removed from /Chat Requests.");
+            }
+
+        } else {
+            Log.d(TAG, "RootRef is null, nothing to remove for notification listeners.");
+        }
+
+        // Reset counts and clear badges visually when listeners are removed (e.g., onStop, logout)
+        // Ensure this runs on the UI thread
+        runOnUiThread(() -> {
+            unreadChatGroupCountForBadge = 0;
+            pendingRequestCountForBadge = 0;
+            // unreadChatCountState = 0; // These state variables were removed
+            // unreadGroupCountState = 0; // These state variables were removed
+
+            // Explicitly remove badges from the Bottom Navigation View
+            BottomNavigationView bottomNavigation = findViewById(R.id.bottomNavigation);
+            if (bottomNavigation != null) {
+                bottomNavigation.removeBadge(R.id.bottom_chat);
+                bottomNavigation.removeBadge(R.id.bottom_requests);
+                // Remove badges for other tabs if they can have them
+            }
+        });
+        Log.d(TAG, "Badge counts reset and badges removed.");
+    }
+
+// ... (Keep your existing methods) ...
+
+
+    // ... (Keep removeChatRequests method) ...
+
+    // --- NEW Method to clean up Chat Summaries related to the deleted user ---
+// ... (Keep removeChatRequests method) ...
+
+    // --- NEW Method to clean up Chat Summaries related to the deleted user ---
+    private void removeChatSummariesData(String userId, ProgressDialog progressDialog, FirebaseUser user) {
+        Log.d(TAG, "Removing Firebase chat summaries data related to: " + userId);
+        DatabaseReference chatSummariesRootRef = FirebaseDatabase.getInstance().getReference("Chat Summaries");
+
+        // Use addListenerForSingleValueEvent because we only need the data once to clean up
+        chatSummariesRootRef.addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
+                Map<String, Object> updates = new HashMap<>();
+                int modifiedSummaries = 0;
+                if (snapshot.exists()) {
+                    for (DataSnapshot summarySnapshot : snapshot.getChildren()) {
+                        String conversationId = summarySnapshot.getKey();
+                        // Check if the deleted user was a participant
+                        boolean isParticipant = summarySnapshot.child("participants").hasChild(userId);
+
+                        if (isParticipant) {
+                            // If the deleted user was a participant, remove their entry from participants and unreadCounts
+                            // Path to remove: /Chat Summaries/{convId}/participants/{userId}
+                            updates.put(conversationId + "/participants/" + userId, null);
+                            // Path to remove: /Chat Summaries/{convId}/unreadCounts/{userId}
+                            updates.put(conversationId + "/unreadCounts/" + userId, null);
+                            modifiedSummaries++;
+
+                            // OPTIONAL (More complex): If the conversation becomes empty (e.g., 1:1 chat)
+                            // after removing this user, you might want to delete the *entire* summary node.
+                            // This requires checking if the 'participants' node becomes empty or only contains the other user.
+                            // For now, just removing the user's specific entries is a safer basic cleanup.
+
+                        }
+                    }
+                }
+                Log.d(TAG, "Firebase: Preparing to clean up Chat Summaries for user: " + userId + ". Modified " + modifiedSummaries + " summaries.");
+
+                if (!updates.isEmpty()) {
+                    chatSummariesRootRef.updateChildren(updates)
+                            .addOnCompleteListener(summariesRemovalTask -> {
+                                if (summariesRemovalTask.isSuccessful()) {
+                                    Log.d(TAG, "Firebase: Successfully cleaned up Chat Summaries.");
+                                } else {
+                                    Log.w(TAG, "Firebase: Failed to clean up Chat Summaries.", summariesRemovalTask.getException());
+                                    // Avoid toast here as this runs on a background thread initiated from deleteAccount
+                                }
+                                // Continue to the next step regardless of success/failure
+                                removeUserMainData(userId, progressDialog, user); // *** CALL THE NEXT STEP IN THE CHAIN ***
+                            });
+                } else {
+                    Log.d(TAG, "Firebase: User not found in any Chat Summaries participants lists to modify.");
+                    removeUserMainData(userId, progressDialog, user); // *** CALL THE NEXT STEP IN THE CHAIN ***
+                }
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) {
+                Log.e(TAG, "Firebase: Failed to fetch Chat Summaries for cleanup", error.toException());
+                // Avoid toast here
+                removeUserMainData(userId, progressDialog, user); // *** CALL THE NEXT STEP EVEN ON ERROR ***
+            }
+        });
+    }
+// ... (Keep removeUserMainData and subsequent methods) ...
+
+    // Helper method to calculate total unread conversations and update the badge
+    private void updateGroupsTabBadge() {
+        // Sum up the unread counts for Groups and Temporary Rooms
+        int totalUnreadGroupsAndRooms = unreadGroupCountForBadge + unreadTemporaryRoomCountForBadge;
+
+        // Update the badge on the BottomNavigationView for the Groups tab
+        // ASSUMPTION: R.id.bottom_groups is the correct ID for your Groups tab
+        updateBadge(R.id.bottom_groups, totalUnreadGroupsAndRooms);
+
+        Log.d(TAG, "Updated Groups Tab Badge (R.id.bottom_groups). Groups: " + unreadGroupCountForBadge +
+                ", Temp Rooms: " + unreadTemporaryRoomCountForBadge +
+                ", TOTAL Unread Groups/Rooms: " + totalUnreadGroupsAndRooms);
+    }
+
+
+    private void updatePrivateChatBadge() {
+        // unreadPrivateChatCountForBadge holds the total unread messages from private chats
+        updateBadge(R.id.bottom_chat, unreadPrivateChatCountForBadge);
+
+        Log.d(TAG, "Updated Private Chat Badge (R.id.bottom_chat) with total unread messages: " + unreadPrivateChatCountForBadge);
+    }
+
+
+
+    // *** NEW Helper method to load unread counts from Room for initial display (especially offline) ***
+    // *** NEW Helper method to load unread counts from Room for initial display (especially offline) ***
+    private void loadUnreadCountsFromRoom(String userId) {
+        // Ensure DAOs and Executor are initialized before trying to use them
+        // Use the member variables initialized in MainActivity's onCreate
+        // Access the static executor from ChatDatabase class
+        if (TextUtils.isEmpty(userId) || chatDao == null || groupListDao == null || ChatDatabase.databaseWriteExecutor == null || mainHandler == null) {
+            Log.w(TAG, "Cannot load unread counts from Room: userId, DAOs, Executor, or Handler is null.");
+            // Optionally clear counts and badges here if critical failure, but logging is usually sufficient
+            return;
+        }
+        Log.d(TAG, "Loading initial unread counts from Room for user: " + userId);
+
+        // Run Room queries on the background database executor (Access via static member)
+        ChatDatabase.databaseWriteExecutor.execute(() -> { // <<< CORRECTED: Access static executor
+            int privateChatCount = 0;
+            int groupCount = 0;
+            int tempRoomCount = 0;
+
+            try {
+                // Query ChatDao for total unread messages in private chats (Use member variable)
+                privateChatCount = chatDao.getTotalUnreadMessageCount(userId);
+                Log.d(TAG, "Room Load (Executor): Loaded " + privateChatCount + " total unread messages from private chats for user " + userId);
+            } catch (Exception e) {
+                Log.e(TAG, "Room Load (Executor): Error loading private chat unread count.", e);
+            }
+
+            try {
+                // Query GroupListDao for unread groups (Use member variable)
+                groupCount = groupListDao.getUnreadGroupCount(userId);
+                Log.d(TAG, "Room Load (Executor): Loaded " + groupCount + " unread groups for user " + userId);
+            } catch (Exception e) {
+                Log.e(TAG, "Room Load (Executor): Error loading group unread count.", e);
+            }
+
+            try {
+                // Query GroupListDao for unread temporary rooms (Use member variable)
+                long currentTime = System.currentTimeMillis();
+                tempRoomCount = groupListDao.getUnreadTemporaryRoomCount(userId, currentTime);
+                Log.d(TAG, "Room Load (Executor): Loaded " + tempRoomCount + " unread temporary rooms for user " + userId);
+            } catch (Exception e) {
+                Log.e(TAG, "Room Load (Executor): Error loading temporary room unread count.", e);
+            }
+
+            // Requests count is not cached in Room with the current setup, so we'll assume 0 offline initially.
+            int requestCount = 0; // Initialize to 0 as it's not loaded from Room here.
+
+
+            // Post the loaded counts to the Main Thread to update state variables and badges
+            int finalPrivateChatCount = privateChatCount;
+            int finalGroupCount = groupCount;
+            int finalTempRoomCount = tempRoomCount;
+            mainHandler.post(() -> {
+                Log.d(TAG, "Room Load (Main Thread): Updating badge counts from Room.");
+                // Update the state variables with the loaded counts
+                unreadPrivateChatCountForBadge = finalPrivateChatCount;
+                unreadGroupCountForBadge = finalGroupCount;
+                unreadTemporaryRoomCountForBadge = finalTempRoomCount;
+                // Request count remains 0 from Room load
+                pendingRequestCountForBadge = requestCount; // Explicitly set to 0 from Room load
+
+
+                // Update the badges immediately based on the locally loaded data
+                updatePrivateChatBadge(); // Update chat tab badge
+                updateGroupsTabBadge(); // Update groups tab badge
+                updateBadge(R.id.bottom_requests, pendingRequestCountForBadge); // Update requests tab badge (will be 0 here)
+
+                Log.d(TAG, "Room Load (Main Thread): Initial badge counts set from Room. Private: " + unreadPrivateChatCountForBadge + ", Groups: " + unreadGroupCountForBadge + ", Temp Rooms: " + unreadTemporaryRoomCountForBadge + ", Requests (Offline): " + pendingRequestCountForBadge);
+
+                // Now proceed with other setup that might depend on user ID or keys being available
+                // The existing onStart logic handles attaching Firebase listeners *after* this Room load starts.
+                // The Firebase listeners will override these counts when Firebase data arrives.
+
+            });
+        });
+    }
 
 }
 
